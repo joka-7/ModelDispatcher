@@ -51,13 +51,15 @@ useGateway().dispatch(prompt)
    ```
 
 2. **Configure env** — copy `.env.example` to `.env.local` and fill in your
-   Firebase project + App Check reCAPTCHA site key. Enable App Check for your
-   Firebase app and register the reCAPTCHA v3 provider.
+   Firebase project + App Check reCAPTCHA site key. Never set up a Firebase
+   project before? [`FIREBASE_APPCHECK_SETUP.md`](./FIREBASE_APPCHECK_SETUP.md)
+   is a from-scratch console checklist (~15 minutes) covering exactly the six
+   env vars this template needs.
 
 3. **Backend credential** — the Python function verifies App Check tokens with
-   `firebase-admin`, which needs Application Default Credentials. Set
-   `GOOGLE_APPLICATION_CREDENTIALS` (local) or add the Vercel Firebase
-   integration / a service-account secret (deploy).
+   `firebase-admin`. Set `GOOGLE_APPLICATION_CREDENTIALS` (a file path, for
+   local dev) or `FIREBASE_SERVICE_ACCOUNT_JSON` (the credential JSON itself,
+   for Vercel — see the setup doc for why).
 
 4. **Pin the gateway** — edit `api/requirements.txt` to the tag/commit you want:
 
