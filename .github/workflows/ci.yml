@@ -61,6 +61,72 @@ jobs:
         working-directory: demo/frontend
         run: npm run build
 
+  ts_client:
+    name: TS client — type-check, test & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: clients/typescript/package-lock.json
+
+      - name: Install dependencies
+        working-directory: clients/typescript
+        run: npm ci
+
+      - name: Type-check
+        working-directory: clients/typescript
+        run: npm run typecheck
+
+      - name: Test
+        working-directory: clients/typescript
+        run: npm test
+
+      - name: Build
+        working-directory: clients/typescript
+        run: npm run build
+
+  vercel_template:
+    name: Vercel template — lint & test wrapper (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install gateway (dev extras) + wrapper dependencies
+        run: |
+          pip install -e ".[dev]"
+          pip install firebase-admin
+
+      - name: Ruff lint
+        run: ruff check templates
+
+      - name: Ruff format check
+        run: ruff format --check templates
+
+      - name: mypy (lenient — firebase-admin ships no type stubs)
+        env:
+          MYPYPATH: templates/vercel-app/api
+        run: >
+          mypy --config-file= --ignore-missing-imports
+          templates/vercel-app/api/gateway.py
+          templates/vercel-app/api/_lib
+
+      - name: pytest (dispatch pipeline)
+        run: pytest templates/vercel-app/api/tests
+
   docker:
     name: Build & publish demo image
     runs-on: ubuntu-latest
