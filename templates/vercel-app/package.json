@@ -2,7 +2,7 @@
   "name": "modeldispatcher-vercel-template",
   "version": "0.1.0",
   "private": true,
-  "description": "Reference Next.js app on Vercel that integrates the ModelDispatcher gateway via the /api Python wrapper and the @modeldispatcher/client TS client.",
+  "description": "Reference Next.js app on Vercel that integrates the ModelDispatcher gateway via the /api Python wrapper and the @joka-7/modeldispatcher-client TS client.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@modeldispatcher/client": "^0.2.0",
+    "@joka-7/modeldispatcher-client": "^0.2.0",
     "firebase": "^10.12.0",
     "next": "^14.2.0",
     "react": "^18.3.1",

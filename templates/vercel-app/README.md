@@ -2,7 +2,7 @@
 
 A minimal Next.js (App Router) app that runs the **ModelDispatcher** gateway as a
 Vercel Python Function behind a Firebase App Check perimeter, and talks to it from
-the browser through the resilient `@modeldispatcher/client`.
+the browser through the resilient `@joka-7/modeldispatcher-client`.
 
 This is the Phase 2 reference wiring described in
 [`ARCHITECTURE_PHASE2.md`](../../ARCHITECTURE_PHASE2.md). Copy the folder, set your
@@ -26,7 +26,7 @@ vercel-app/
 │   ├── components/KeyWizard.tsx
 │   ├── page.tsx             # dispatch console + outcome rendering
 │   └── layout.tsx
-├── package.json             # @modeldispatcher/client + firebase + next
+├── package.json             # @joka-7/modeldispatcher-client + firebase + next
 ├── vercel.json              # function config
 └── .env.example
 ```
@@ -74,8 +74,25 @@ MD_APP_CHECK_MODE=disabled vercel dev
 
 The shipped `wiring.py` uses keyless mock providers, so a fresh checkout runs end
 to end. Dispatch repeatedly to exhaust the small demo quota and watch the
-`KeyWizard` open from the Stage-2 `trigger_key_wizard` handoff. Swap in real
-providers in `api/_lib/wiring.py` (`_register_providers`) when you're ready.
+`KeyWizard` open from the Stage-2 `trigger_key_wizard` handoff.
+
+### Going live per tier
+
+`api/_lib/wiring.py` fills each of the three routing tiers (`FREE`/`STANDARD`/
+`PREMIUM`) from `_SLOTS`: if that tier's API key env var is set, it registers the
+real adapter (`GeminiProvider` / `OpenAIProvider` / `AnthropicProvider`); if not,
+it falls back to the keyless mock. No code changes needed — set the keys you have
+and leave the rest unset:
+
+| Tier | Env var | Model override | Adapter |
+| --- | --- | --- | --- |
+| FREE | `MD_GEMINI_API_KEY` | `MD_GEMINI_MODEL` | `GeminiProvider` |
+| STANDARD | `MD_OPENAI_API_KEY` | `MD_OPENAI_MODEL` | `OpenAIProvider` |
+| PREMIUM | `MD_ANTHROPIC_API_KEY` | `MD_ANTHROPIC_MODEL` | `AnthropicProvider` |
+
+Also add the matching extra(s) to `api/requirements.txt` (e.g.
+`model-dispatcher[openai]`) so the vendor SDK you actually key is installed —
+extras you don't use add cold-start weight for nothing.
 
 ## Tests
 

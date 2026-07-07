@@ -1,11 +1,11 @@
 /**
- * `@modeldispatcher/client` — resilient TypeScript client for the
+ * `@joka-7/modeldispatcher-client` — resilient TypeScript client for the
  * ModelDispatcher AI gateway.
  *
  * Public surface: construct a {@link GatewayClient} with
  * {@link createGatewayClient}, `dispatch` request bodies, and `switch` on the
  * returned {@link DispatchOutcome}. React apps use `useGateway` from the
- * `@modeldispatcher/client/react` subpath. All resilience — timeouts, 5xx
+ * `@joka-7/modeldispatcher-client/react` subpath. All resilience — timeouts, 5xx
  * backoff, and 402/429 key-wizard handoff decoding — is built in.
  */
 

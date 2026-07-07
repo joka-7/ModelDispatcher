@@ -10,8 +10,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { DispatchOutcome } from "@modeldispatcher/client";
-import { useGateway } from "@modeldispatcher/client/react";
+import type { DispatchOutcome } from "@joka-7/modeldispatcher-client";
+import { useGateway } from "@joka-7/modeldispatcher-client/react";
 
 import { gateway } from "./lib/gateway";
 import { KeyWizard } from "./components/KeyWizard";
