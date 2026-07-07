@@ -1,0 +1,77 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "model-dispatcher"
+version = "0.1.0"
+description = "Resilient AI Model Gateway/Router: strategy providers, chain-of-responsibility fallback, native agent orchestration, token-aware multi-tenant quotas, and two-stage onboarding."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.12"
+authors = [{ name = "ModelDispatcher maintainers" }]
+keywords = ["llm", "gateway", "router", "fallback", "agent", "orchestration"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+# Skeleton phase: the core carries no hard runtime dependencies. Concrete
+# provider adapters pull their vendor SDKs in via the optional extras below.
+dependencies = []
+
+[project.optional-dependencies]
+openai = ["openai>=1.40"]
+anthropic = ["anthropic>=0.34"]
+gemini = ["google-generativeai>=0.7"]
+dev = [
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.23",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/model_dispatcher"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# PEP 8 (E, W), pyflakes (F), isort (I), pep8-naming (N), pyupgrade (UP),
+# flake8-bugbear (B), and docstring presence (D) keep the skeleton honest.
+select = ["E", "W", "F", "I", "N", "UP", "B", "D"]
+ignore = [
+    "D105",  # magic-method docstrings are optional
+    "D107",  # __init__ docstring folded into the class docstring
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D"]  # tests document themselves through names/asserts
+# PerimeterViolation / AllProvidersExhausted are deliberate public API names.
+"src/model_dispatcher/exceptions.py" = ["N818"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+mypy_path = "src"
+packages = ["model_dispatcher"]
+
+[[tool.mypy.overrides]]
+# Vendor SDKs are optional extras, imported lazily inside adapter methods; their
+# stubs need not be installed for the core to type-check.
+module = ["anthropic.*", "openai.*", "google.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+asyncio_mode = "auto"
