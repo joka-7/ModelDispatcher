@@ -17,15 +17,24 @@ class ProviderRegistry:
     """An ordered collection of registered provider strategies.
 
     Internally keyed by ``name`` for identity lookups and indexed by tier for the
-    router's cheapest-first queries.
+    router's cheapest-first queries. Insertion order is preserved so that
+    equally-ranked providers fall back in a deterministic sequence.
     """
 
     def __init__(self) -> None:
         self._by_name: dict[str, ModelProvider] = {}
 
+    def __len__(self) -> int:
+        """Return the number of registered providers."""
+        return len(self._by_name)
+
+    def __contains__(self, name: object) -> bool:
+        """Return whether a provider is registered under ``name``."""
+        return name in self._by_name
+
     def register(self, provider: ModelProvider) -> None:
         """Add a provider, replacing any existing one with the same name."""
-        raise NotImplementedError
+        self._by_name[provider.name] = provider
 
     def get(self, name: str) -> ModelProvider:
         """Return the provider registered under ``name``.
@@ -33,18 +42,24 @@ class ProviderRegistry:
         Raises:
             KeyError: If no provider is registered under that name.
         """
-        raise NotImplementedError
+        return self._by_name[name]
+
+    def all(self) -> list[ModelProvider]:
+        """Return every registered provider in insertion order."""
+        return list(self._by_name.values())
 
     def by_tier(self, tier: ModelTier) -> list[ModelProvider]:
-        """Return all providers occupying exactly ``tier``."""
-        raise NotImplementedError
+        """Return all providers occupying exactly ``tier``, in insertion order."""
+        return [p for p in self._by_name.values() if p.tier == tier]
 
     def at_or_above(self, floor: ModelTier) -> list[ModelProvider]:
         """Return providers whose tier is ``>= floor``, sorted cheapest-first.
 
-        This is the primitive the router composes into a fallback candidate list.
+        Ties (same tier) preserve registration order via a stable sort, so the
+        fallback sequence within a tier is deterministic.
         """
-        raise NotImplementedError
+        eligible = [p for p in self._by_name.values() if p.tier >= floor]
+        return sorted(eligible, key=lambda p: p.tier)
 
     def cheapest_capable(
         self, floor: ModelTier, required: ProviderCapability
@@ -54,4 +69,9 @@ class ProviderRegistry:
         Raises:
             LookupError: If no registered provider satisfies the constraints.
         """
-        raise NotImplementedError
+        for provider in self.at_or_above(floor):
+            if required & provider.capabilities == required:
+                return provider
+        raise LookupError(
+            f"no provider at tier >= {floor.name} with capabilities {required!r}"
+        )

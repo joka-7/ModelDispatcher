@@ -34,34 +34,34 @@ class ModelDispatcherError(Exception):
 
     Attributes:
         http_status: The HTTP status a proxy should map this error to.
+        error_code: Stable machine-readable slug embedded in the JSON body.
         message: Human-readable description (also the ``str`` form).
     """
 
     http_status: int = 500
+    error_code: str = "internal_error"
 
     def __init__(self, message: str) -> None:
         super().__init__(message)
         self.message = message
 
     def to_payload(self) -> dict[str, JSONValue]:
-        """Return the JSON body a web layer should serialise for this error.
-
-        Subclasses override to enrich the payload; the base form exposes a stable
-        ``error``/``detail`` envelope.
-        """
-        raise NotImplementedError
+        """Return the JSON body a web layer should serialise for this error."""
+        return {"error": self.error_code, "detail": self.message}
 
 
 class PerimeterViolation(ModelDispatcherError):
     """Inbound request rejected by :class:`PerimeterValidator` (auth/size/allowlist)."""
 
     http_status = 403
+    error_code = "perimeter_violation"
 
 
 class AuthenticationError(ModelDispatcherError):
     """No usable credential could be resolved for the tenant/provider."""
 
     http_status = 401
+    error_code = "authentication_error"
 
 
 class RateLimitError(ModelDispatcherError):
@@ -72,6 +72,7 @@ class RateLimitError(ModelDispatcherError):
     """
 
     http_status = 429
+    error_code = "rate_limited"
 
 
 class QuotaExceededError(ModelDispatcherError):
@@ -82,6 +83,8 @@ class QuotaExceededError(ModelDispatcherError):
     the front end to launch its key wizard, and its ``http_status`` is chosen by
     the handoff (``402`` for budget/upgrade, ``429`` for a rate window).
     """
+
+    error_code = "quota_exceeded"
 
     def __init__(self, handoff: HandoffResponse) -> None:
         super().__init__(
@@ -99,13 +102,14 @@ class QuotaExceededError(ModelDispatcherError):
             {"error": "quota_exceeded", "provider": "openai",
              "action": "trigger_key_wizard"}
         """
-        raise NotImplementedError
+        return self.handoff.to_payload()
 
 
 class AllProvidersExhausted(ModelDispatcherError):
     """Every routed candidate failed; the fallback chain has nothing left to try."""
 
     http_status = 503
+    error_code = "all_providers_exhausted"
 
 
 class ToolExecutionError(ModelDispatcherError):
@@ -115,6 +119,16 @@ class ToolExecutionError(ModelDispatcherError):
     the error back to the model or abort the run.
     """
 
+    error_code = "tool_execution_error"
+
     def __init__(self, tool_name: str, message: str) -> None:
         super().__init__(message)
         self.tool_name = tool_name
+
+    def to_payload(self) -> dict[str, JSONValue]:
+        """Return the error body including the offending tool name."""
+        return {
+            "error": self.error_code,
+            "detail": self.message,
+            "tool": self.tool_name,
+        }

@@ -3,9 +3,11 @@
 The manager enforces limits in two phases around each model call:
 
 * **reserve** — before the call, estimate the cost and decide ALLOW / SOFT_LIMIT
-  / DENY against the tenant's windows.
+  / DENY against the tenant's windows, pre-charging the estimate so concurrent
+  in-flight requests see each other.
 * **commit** — after the call, reconcile the reservation against the *actual*
-  usage the provider reported, correcting the estimate so counters stay accurate.
+  usage the provider reported, correcting the pre-charge so counters stay
+  accurate.
 
 This reserve/commit split is what makes quota enforcement token-aware rather than
 merely request-counting.
@@ -64,19 +66,74 @@ class QuotaManager:
         """Provisionally charge ``estimated_tokens`` and return the verdict.
 
         Algorithm:
-            For each of the tenant's windows (per-minute, per-day, budget),
-            read the current counter and test ``current + estimate`` against the
-            cap. The strictest verdict wins: any hard breach yields ``DENY``;
-            otherwise crossing ``soft_limit_ratio`` yields ``SOFT_LIMIT``; else
-            ``ALLOW``. On a non-deny verdict the estimate is written to the store
-            so concurrent requests see the reservation immediately.
+            For each of the tenant's windows (requests/min, tokens/min,
+            tokens/day) read the current counter and test the prospective total
+            against the cap. The strictest verdict wins: any hard breach yields
+            ``DENY``; otherwise crossing ``soft_limit_ratio`` of any window yields
+            ``SOFT_LIMIT``; else ``ALLOW``. On a non-deny verdict the request and
+            token counters are incremented so concurrent requests see the
+            reservation immediately.
         """
-        raise NotImplementedError
+        quota = tenant.quota
+        tid = tenant.tenant_id
 
-    def commit(self, tenant: TenantContext, actual: Usage) -> None:
-        """Reconcile a prior reservation against the provider-reported usage.
+        checks: list[tuple[str, int, int]] = [
+            (
+                "requests_per_min",
+                self._store.read(tid, "requests_per_min") + 1,
+                quota.requests_per_min,
+            ),
+            (
+                "tokens_per_min",
+                self._store.read(tid, "tokens_per_min") + estimated_tokens,
+                quota.tokens_per_min,
+            ),
+            (
+                "tokens_per_day",
+                self._store.read(tid, "tokens_per_day") + estimated_tokens,
+                quota.tokens_per_day,
+            ),
+        ]
 
-        Adjusts the tenant's counters by the delta between the reserved estimate
-        and ``actual.total_tokens`` so long-running accuracy does not drift.
+        outcome = QuotaOutcome.ALLOW
+        breached: str | None = None
+        for window, prospective, cap in checks:
+            if prospective > cap:
+                return QuotaDecision(
+                    outcome=QuotaOutcome.DENY,
+                    reserved_tokens=0,
+                    breached_window=window,
+                    provider_name=provider.name,
+                )
+            if prospective > cap * quota.soft_limit_ratio:
+                outcome = QuotaOutcome.SOFT_LIMIT
+                breached = window
+
+        self._store.incr(tid, "requests_per_min", 1)
+        self._store.incr(tid, "tokens_per_min", estimated_tokens)
+        self._store.incr(tid, "tokens_per_day", estimated_tokens)
+
+        return QuotaDecision(
+            outcome=outcome,
+            reserved_tokens=estimated_tokens,
+            breached_window=breached,
+            provider_name=provider.name,
+        )
+
+    def commit(
+        self,
+        tenant: TenantContext,
+        decision: QuotaDecision,
+        actual: Usage,
+    ) -> None:
+        """Reconcile a prior reservation against provider-reported usage.
+
+        Adjusts the tenant's token counters by the delta between the reserved
+        estimate and ``actual.total_tokens`` so long-running accuracy does not
+        drift. A negative delta (the estimate over-counted) refunds the tenant.
         """
-        raise NotImplementedError
+        delta = actual.total_tokens - decision.reserved_tokens
+        if delta == 0:
+            return
+        self._store.incr(tenant.tenant_id, "tokens_per_min", delta)
+        self._store.incr(tenant.tenant_id, "tokens_per_day", delta)

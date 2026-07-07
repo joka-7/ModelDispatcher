@@ -8,6 +8,8 @@ synchronous caller. This module is private; callers use :class:`ModelGateway`.
 
 from __future__ import annotations
 
+import asyncio
+import threading
 from collections.abc import Coroutine
 
 __all__ = ["run_sync"]
@@ -22,4 +24,24 @@ def run_sync[T](coro: Coroutine[object, object, T]) -> T:
         was called from within async code), execute the coroutine on a dedicated
         worker thread with its own loop to avoid re-entrancy deadlocks.
     """
-    raise NotImplementedError
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+    result: list[T] = []
+    error: list[BaseException] = []
+
+    def _worker() -> None:
+        try:
+            result.append(asyncio.run(coro))
+        except BaseException as exc:  # noqa: BLE001 - re-raised on the caller thread
+            error.append(exc)
+
+    thread = threading.Thread(target=_worker, daemon=True)
+    thread.start()
+    thread.join()
+
+    if error:
+        raise error[0]
+    return result[0]

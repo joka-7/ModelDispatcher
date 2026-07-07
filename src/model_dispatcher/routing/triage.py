@@ -18,6 +18,48 @@ __all__ = ["ComplexityScorer", "TaskTriage"]
 type ComplexityScorer = Callable[[CompletionRequest], TaskComplexity]
 """Pluggable strategy mapping a request to a complexity verdict."""
 
+# Lower-cased substrings that signal genuine reasoning/agentic work.
+_REASONING_MARKERS: tuple[str, ...] = (
+    "prove",
+    "step by step",
+    "step-by-step",
+    "analyze",
+    "analyse",
+    "reason",
+    "explain why",
+    "derive",
+    "optimize",
+    "optimise",
+    "design",
+    "architect",
+    "refactor",
+    "debug",
+    "trade-off",
+    "tradeoff",
+    "algorithm",
+)
+
+
+def _default_scorer(request: CompletionRequest) -> TaskComplexity:
+    """Weighted heuristic scorer used when no custom strategy is supplied."""
+    text = " ".join(m.content or "" for m in request.messages).lower()
+
+    score = min(len(text) / 500.0, 4.0)  # size, capped at 4 points
+    score += float(len(request.tools))  # each declared tool implies agentic work
+    score += sum(1.0 for marker in _REASONING_MARKERS if marker in text)
+    if "```" in text:
+        score += 1.0
+    if request.max_tokens is not None and request.max_tokens > 1024:
+        score += 1.0
+
+    if score < 1.5:
+        return TaskComplexity.TRIVIAL
+    if score < 3.0:
+        return TaskComplexity.SIMPLE
+    if score < 5.0:
+        return TaskComplexity.MODERATE
+    return TaskComplexity.COMPLEX
+
 
 class TaskTriage:
     """Heuristic complexity classifier.
@@ -40,8 +82,8 @@ class TaskTriage:
 
     def __init__(self, scorer: ComplexityScorer | None = None) -> None:
         """Initialise with an optional custom scorer (defaults to the heuristic)."""
-        self._scorer = scorer
+        self._scorer: ComplexityScorer = scorer or _default_scorer
 
     def classify(self, request: CompletionRequest) -> TaskComplexity:
         """Return the complexity verdict for ``request``."""
-        raise NotImplementedError
+        return self._scorer(request)

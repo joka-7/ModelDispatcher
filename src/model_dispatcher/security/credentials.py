@@ -11,8 +11,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from ..exceptions import AuthenticationError
 from ..providers.base import ModelProvider
 from ..quota.tenant import TenantContext
+from ..types import ModelTier
 
 __all__ = ["CredentialSource", "Credential", "CredentialResolver"]
 
@@ -59,8 +61,56 @@ class CredentialResolver:
     def resolve(self, tenant: TenantContext, provider: ModelProvider) -> Credential:
         """Return the highest-precedence credential available for the pair.
 
+        Keys are looked up in the tenant's metadata under ``user_key:<family>``
+        and ``tenant_key:<family>`` (where ``<family>`` is the provider name
+        prefix, e.g. ``openai``). A ``FREE`` tier provider is keyless. A zero-setup
+        tenant with no key of its own rides the shared, rate-limited global app
+        key. Anything else is unauthenticated.
+
         Raises:
             AuthenticationError: If no credential of any tier can be resolved and
                 the provider is not keyless.
         """
-        raise NotImplementedError
+        family = provider.name.split(":", 1)[0]
+
+        user_key = tenant.metadata.get(f"user_key:{family}")
+        if user_key:
+            return Credential(
+                provider_name=provider.name,
+                source=CredentialSource.USER,
+                secret_ref=_mask(user_key),
+            )
+
+        tenant_key = tenant.metadata.get(f"tenant_key:{family}")
+        if tenant_key:
+            return Credential(
+                provider_name=provider.name,
+                source=CredentialSource.TENANT,
+                secret_ref=_mask(tenant_key),
+            )
+
+        if provider.tier is ModelTier.FREE:
+            return Credential(
+                provider_name=provider.name,
+                source=CredentialSource.FREE_TIER,
+                secret_ref="keyless",
+            )
+
+        if tenant.is_zero_setup:
+            return Credential(
+                provider_name=provider.name,
+                source=CredentialSource.GLOBAL_APP,
+                secret_ref="global-app-key",
+                is_rate_limited=True,
+            )
+
+        raise AuthenticationError(
+            f"no credential available for provider {provider.name!r}"
+        )
+
+
+def _mask(secret: str) -> str:
+    """Return a non-reversible reference to a secret for safe storage/logging."""
+    if len(secret) <= 4:
+        return "****"
+    return f"****{secret[-4:]}"

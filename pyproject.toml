@@ -30,6 +30,7 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
     "pytest>=8.3",
+    "pytest-asyncio>=0.23",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -64,6 +65,13 @@ warn_unreachable = true
 mypy_path = "src"
 packages = ["model_dispatcher"]
 
+[[tool.mypy.overrides]]
+# Vendor SDKs are optional extras, imported lazily inside adapter methods; their
+# stubs need not be installed for the core to type-check.
+module = ["anthropic.*", "openai.*", "google.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+asyncio_mode = "auto"

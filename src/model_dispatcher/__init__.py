@@ -26,6 +26,14 @@ from .exceptions import (
 from .gateway import ModelGateway
 from .onboarding import HandoffResponse, KeyWizardHandoff, OnboardingStage
 from .orchestration import RunResult, StopReason, Tool, ToolRegistry
+from .providers import (
+    AnthropicProvider,
+    MockProvider,
+    ModelProvider,
+    OpenAIProvider,
+    ProviderRegistry,
+)
+from .quota import InMemoryQuotaStore, QuotaManager, TenantContext, TenantQuota
 from .types import (
     CompletionRequest,
     CompletionResponse,
@@ -71,6 +79,17 @@ __all__ = [
     "StopReason",
     "Tool",
     "ToolRegistry",
+    # Providers & registry
+    "ModelProvider",
+    "ProviderRegistry",
+    "MockProvider",
+    "OpenAIProvider",
+    "AnthropicProvider",
+    # Quota & tenancy
+    "QuotaManager",
+    "InMemoryQuotaStore",
+    "TenantContext",
+    "TenantQuota",
     # Onboarding
     "OnboardingStage",
     "KeyWizardHandoff",

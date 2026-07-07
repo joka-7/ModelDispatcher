@@ -41,8 +41,25 @@ class ModelRouter:
 
         The result seeds the fallback chain's ``candidates`` list.
         """
-        raise NotImplementedError
+        floor = self._policy.complexity_floor[complexity]
+        if request.tier_hint is not None and request.tier_hint > floor:
+            floor = request.tier_hint  # a hint may raise the floor, never lower it
+
+        required = self._required_capabilities(request)
+        candidates = [
+            provider
+            for provider in self._registry.at_or_above(floor)
+            if required & provider.capabilities == required
+        ]
+
+        if not self._policy.allow_escalation:
+            candidates = [p for p in candidates if p.tier == floor]
+
+        return candidates[: self._policy.max_candidates]
 
     def _required_capabilities(self, request: CompletionRequest) -> ProviderCapability:
         """Derive the capability mask a request demands (tools, vision, ...)."""
-        raise NotImplementedError
+        required = ProviderCapability.NONE
+        if request.tools:
+            required |= ProviderCapability.TOOLS
+        return required

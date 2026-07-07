@@ -30,8 +30,6 @@ class NullMetricsSink:
 
     def increment(self, name: str, value: int = 1, **tags: str) -> None:
         """Discard the counter increment."""
-        raise NotImplementedError
 
     def observe(self, name: str, value: float, **tags: str) -> None:
         """Discard the observation."""
-        raise NotImplementedError

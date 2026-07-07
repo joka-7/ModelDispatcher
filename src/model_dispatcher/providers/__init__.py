@@ -6,6 +6,7 @@ from .anthropic_provider import AnthropicProvider
 from .base import ModelProvider
 from .gemini_provider import GeminiProvider
 from .local_provider import LocalProvider
+from .mock_provider import MockError, MockProvider
 from .openai_provider import OpenAIProvider
 from .registry import ProviderRegistry
 
@@ -16,4 +17,6 @@ __all__ = [
     "AnthropicProvider",
     "GeminiProvider",
     "LocalProvider",
+    "MockProvider",
+    "MockError",
 ]

@@ -9,7 +9,10 @@ cheaply and early as possible.
 
 from __future__ import annotations
 
+import json
+
 from ..config import SecuritySettings
+from ..exceptions import PerimeterViolation
 from ..quota.tenant import TenantContext
 from ..types import CompletionRequest
 from .credentials import CredentialResolver
@@ -42,4 +45,36 @@ class PerimeterValidator:
         Raises:
             PerimeterViolation: On any failed check (HTTP 403).
         """
-        raise NotImplementedError
+        if self._settings.require_tenant_auth and not tenant.tenant_id:
+            raise PerimeterViolation("request is missing a tenant identity")
+
+        if not request.messages:
+            raise PerimeterViolation("request carries no messages")
+
+        payload_bytes = self._estimate_payload_bytes(request)
+        if payload_bytes > self._settings.max_payload_bytes:
+            raise PerimeterViolation(
+                f"payload {payload_bytes} bytes exceeds limit "
+                f"{self._settings.max_payload_bytes}"
+            )
+
+        allowed = self._settings.allowed_providers
+        if allowed and tenant.metadata.get("forced_provider") not in allowed:
+            forced = tenant.metadata.get("forced_provider")
+            if forced is not None:
+                raise PerimeterViolation(
+                    f"provider {forced!r} is not on the egress allowlist"
+                )
+
+    @staticmethod
+    def _estimate_payload_bytes(request: CompletionRequest) -> int:
+        """Estimate the serialised size of the request body in bytes."""
+        total = 0
+        for message in request.messages:
+            total += len((message.content or "").encode("utf-8"))
+            if message.tool_result is not None:
+                total += len(message.tool_result.content.encode("utf-8"))
+        for tool in request.tools:
+            total += len(tool.name) + len(tool.description)
+            total += len(json.dumps(tool.parameters).encode("utf-8"))
+        return total

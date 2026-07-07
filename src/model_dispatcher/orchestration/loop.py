@@ -12,10 +12,14 @@ apply uniformly on every iteration, including tool-follow-up turns.
 
 from __future__ import annotations
 
+import time
+
 from ..fallback.chain import FallbackChain
 from ..fallback.handlers import InvocationContext
 from ..providers.base import ModelProvider
-from .result import RunResult
+from ..quota.tenant import TenantContext
+from ..types import CompletionResponse, Message, Role
+from .result import RunResult, StepResult, StopReason
 from .state import ConversationState
 from .tools import ToolExecutor, ToolRegistry
 
@@ -36,6 +40,7 @@ class AgentLoop:
     def run(
         self,
         state: ConversationState,
+        tenant: TenantContext,
         tools: ToolRegistry,
         chain: FallbackChain,
         candidates: list[ModelProvider],
@@ -45,31 +50,39 @@ class AgentLoop:
         """Execute the loop synchronously and return the terminal result.
 
         Algorithm:
-            Repeat up to ``max_iterations`` times::
+            Repeat up to ``max_iterations`` times:
 
                 1. If ``deadline`` has passed, stop with ``DEADLINE``.
                 2. Snapshot ``state`` into a request and dispatch it through the
-                   fallback ``chain`` (fresh candidate list per turn).
+                   fallback ``chain`` (fresh candidate copy per turn).
                 3. Append the assistant message; fold in token usage.
                 4. If the message contains tool calls, execute each via
                    ``ToolExecutor``, append the results as messages, and loop.
-                5. Otherwise the model answered — stop with ``COMPLETED`` and
-                   return the assistant message as ``final_message``.
+                5. Otherwise the model answered — stop with ``COMPLETED``.
 
             If the iteration cap is hit first, stop with ``MAX_ITERATIONS``.
-
-        Args:
-            state: Mutable conversation state, updated in place.
-            tools: Tools the model may invoke this run.
-            chain: The fallback chain each turn is dispatched through.
-            candidates: Router-ordered providers seeding each turn's context.
-            deadline: Optional monotonic-clock cutoff for the whole run.
         """
-        raise NotImplementedError
+        executor = ToolExecutor(tools)
+        steps: list[StepResult] = []
+
+        for _ in range(self._max_iterations):
+            if self._past_deadline(deadline):
+                return self._finalize(state, steps, StopReason.DEADLINE)
+
+            context = self._dispatch_turn(state, tenant, chain, candidates)
+            message = self._absorb(state, steps, context)
+
+            if message.tool_calls:
+                self._run_tool_calls(state, executor, message)
+                continue
+            return self._finalize(state, steps, StopReason.COMPLETED)
+
+        return self._finalize(state, steps, StopReason.MAX_ITERATIONS)
 
     async def arun(
         self,
         state: ConversationState,
+        tenant: TenantContext,
         tools: ToolRegistry,
         chain: FallbackChain,
         candidates: list[ModelProvider],
@@ -77,17 +90,114 @@ class AgentLoop:
         deadline: float | None = None,
     ) -> RunResult:
         """Async counterpart of :meth:`run`."""
-        raise NotImplementedError
+        executor = ToolExecutor(tools)
+        steps: list[StepResult] = []
+
+        for _ in range(self._max_iterations):
+            if self._past_deadline(deadline):
+                return self._finalize(state, steps, StopReason.DEADLINE)
+
+            context = InvocationContext(
+                request=state.to_request(),
+                tenant=tenant,
+                candidates=list(candidates),
+            )
+            response = await chain.aexecute(context)
+            message = self._absorb_response(state, steps, context, response)
+            context.response = response
+
+            if message.tool_calls:
+                await self._arun_tool_calls(state, executor, message)
+                continue
+            return self._finalize(state, steps, StopReason.COMPLETED)
+
+        return self._finalize(state, steps, StopReason.MAX_ITERATIONS)
+
+    # -- helpers ---------------------------------------------------------- #
 
     def _dispatch_turn(
         self,
         state: ConversationState,
+        tenant: TenantContext,
         chain: FallbackChain,
         candidates: list[ModelProvider],
     ) -> InvocationContext:
         """Build the per-turn context and run it through the chain (helper)."""
-        raise NotImplementedError
+        context = InvocationContext(
+            request=state.to_request(),
+            tenant=tenant,
+            candidates=list(candidates),
+        )
+        response = chain.execute(context)
+        context.response = response
+        return context
 
-    def _run_tool_calls(self, state: ConversationState, executor: ToolExecutor) -> None:
-        """Execute the pending tool calls on the last message and append results."""
-        raise NotImplementedError
+    def _absorb(
+        self,
+        state: ConversationState,
+        steps: list[StepResult],
+        context: InvocationContext,
+    ) -> Message:
+        """Fold a completed turn's context into state and step history."""
+        assert context.response is not None  # noqa: S101 - set by _dispatch_turn
+        return self._absorb_response(state, steps, context, context.response)
+
+    @staticmethod
+    def _absorb_response(
+        state: ConversationState,
+        steps: list[StepResult],
+        context: InvocationContext,
+        response: CompletionResponse,
+    ) -> Message:
+        """Record the assistant message, usage, and attempt trail for a turn."""
+        state.append(response.message)
+        state.add_usage(response.usage)
+        state.iterations += 1
+        steps.append(
+            StepResult(
+                message=response.message,
+                usage=response.usage,
+                attempts=tuple(context.attempts),
+            )
+        )
+        return response.message
+
+    def _run_tool_calls(
+        self, state: ConversationState, executor: ToolExecutor, message: Message
+    ) -> None:
+        """Execute the message's tool calls and append their results."""
+        for call in message.tool_calls:
+            result = executor.execute(call)
+            state.append(Message(role=Role.TOOL, tool_result=result))
+
+    async def _arun_tool_calls(
+        self, state: ConversationState, executor: ToolExecutor, message: Message
+    ) -> None:
+        """Async counterpart of :meth:`_run_tool_calls`."""
+        for call in message.tool_calls:
+            result = await executor.aexecute(call)
+            state.append(Message(role=Role.TOOL, tool_result=result))
+
+    @staticmethod
+    def _past_deadline(deadline: float | None) -> bool:
+        """Return whether the monotonic ``deadline`` has elapsed."""
+        return deadline is not None and time.monotonic() > deadline
+
+    @staticmethod
+    def _finalize(
+        state: ConversationState,
+        steps: list[StepResult],
+        reason: StopReason,
+    ) -> RunResult:
+        """Assemble the terminal :class:`RunResult` from accumulated state."""
+        final = next(
+            (m for m in reversed(state.messages) if m.role is Role.ASSISTANT),
+            Message(role=Role.ASSISTANT, content=""),
+        )
+        return RunResult(
+            final_message=final,
+            transcript=tuple(state.messages),
+            usage=state.usage,
+            stop_reason=reason,
+            steps=tuple(steps),
+        )

@@ -42,7 +42,11 @@ class OnboardingResolver:
         that shared capacity is exhausted; a tenant with their own credential is
         never forced into a handoff by quota alone.
         """
-        raise NotImplementedError
+        return (
+            OnboardingStage.ZERO_SETUP
+            if tenant.is_zero_setup
+            else OnboardingStage.GUIDED_HANDOFF
+        )
 
     def escalate(
         self, tenant: TenantContext, provider: str, *, rate_window: bool
@@ -52,4 +56,14 @@ class OnboardingResolver:
         Delegates payload construction to :class:`KeyWizardHandoff`; the caller
         wraps the result in :class:`QuotaExceededError` to unwind the pipeline.
         """
-        raise NotImplementedError
+        detail = (
+            "Free usage limit reached. Add your own API key to continue."
+            if tenant.is_zero_setup
+            else "Quota exceeded. Add or upgrade your API key to continue."
+        )
+        return self._handoff.build(
+            provider,
+            reason="quota_exceeded",
+            rate_window=rate_window,
+            detail=detail,
+        )

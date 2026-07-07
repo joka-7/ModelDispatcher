@@ -9,14 +9,24 @@ protocol.
 
 from __future__ import annotations
 
+import time
 from typing import Protocol, runtime_checkable
 
 from ..types import TenantId
 
-__all__ = ["WindowKey", "QuotaStore", "InMemoryQuotaStore"]
+__all__ = ["WindowKey", "WINDOW_SECONDS", "QuotaStore", "InMemoryQuotaStore"]
 
 type WindowKey = str
 """Identifies a (tenant, window) counter bucket, e.g. ``"tokens_per_min"``."""
+
+# Duration of each named rolling window, in seconds. Fixed, tumbling windows are
+# used (period = floor(now / duration)); a bucket auto-resets when the period
+# rolls over, which is enough for fair short-horizon rate limiting.
+WINDOW_SECONDS: dict[WindowKey, int] = {
+    "requests_per_min": 60,
+    "tokens_per_min": 60,
+    "tokens_per_day": 86_400,
+}
 
 
 @runtime_checkable
@@ -50,17 +60,37 @@ class InMemoryQuotaStore:
     """
 
     def __init__(self) -> None:
-        # Keyed by (tenant, window) -> (count, window_start_monotonic).
-        self._counts: dict[tuple[TenantId, WindowKey], tuple[int, float]] = {}
+        # Keyed by (tenant, window) -> (count, period_index).
+        self._counts: dict[tuple[TenantId, WindowKey], tuple[int, int]] = {}
+
+    @staticmethod
+    def _period(window: WindowKey) -> int:
+        """Return the current tumbling-window index for ``window``."""
+        duration = WINDOW_SECONDS[window]
+        return int(time.monotonic() // duration)
 
     def read(self, tenant: TenantId, window: WindowKey) -> int:
         """See :meth:`QuotaStore.read`."""
-        raise NotImplementedError
+        entry = self._counts.get((tenant, window))
+        if entry is None or entry[1] != self._period(window):
+            return 0
+        return entry[0]
 
     def incr(self, tenant: TenantId, window: WindowKey, tokens: int) -> int:
         """See :meth:`QuotaStore.incr`."""
-        raise NotImplementedError
+        period = self._period(window)
+        entry = self._counts.get((tenant, window))
+        current = entry[0] if entry is not None and entry[1] == period else 0
+        updated = current + tokens
+        self._counts[(tenant, window)] = (updated, period)
+        return updated
 
     def reset_expired(self) -> None:
         """See :meth:`QuotaStore.reset_expired`."""
-        raise NotImplementedError
+        stale = [
+            key
+            for key, (_, period) in self._counts.items()
+            if period != self._period(key[1])
+        ]
+        for key in stale:
+            del self._counts[key]

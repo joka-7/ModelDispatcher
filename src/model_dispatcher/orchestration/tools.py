@@ -43,11 +43,11 @@ class ToolRegistry:
 
     def register(self, tool: Tool) -> None:
         """Add ``tool``, replacing any existing tool of the same name."""
-        raise NotImplementedError
+        self._tools[tool.spec.name] = tool
 
     def specs(self) -> tuple[ToolSpec, ...]:
         """Return the specs advertised to the model, in registration order."""
-        raise NotImplementedError
+        return tuple(tool.spec for tool in self._tools.values())
 
     def get(self, name: str) -> Tool:
         """Return the tool registered under ``name``.
@@ -55,7 +55,11 @@ class ToolRegistry:
         Raises:
             KeyError: If no tool is registered under that name.
         """
-        raise NotImplementedError
+        return self._tools[name]
+
+    def __contains__(self, name: object) -> bool:
+        """Return whether a tool is registered under ``name``."""
+        return name in self._tools
 
 
 class ToolExecutor:
@@ -71,8 +75,35 @@ class ToolExecutor:
         :class:`ToolResult` with ``is_error=True`` so the loop can feed the error
         back to the model rather than aborting the whole run.
         """
-        raise NotImplementedError
+        try:
+            tool = self._registry.get(call.name)
+        except KeyError:
+            return ToolResult(call.id, f"unknown tool: {call.name}", is_error=True)
+        if tool.handler is None:
+            return ToolResult(
+                call.id, f"tool {call.name} has no synchronous handler", is_error=True
+            )
+        try:
+            content = tool.handler(call.arguments)
+        except Exception as exc:  # noqa: BLE001 - surfaced back to the model
+            return ToolResult(call.id, f"tool error: {exc}", is_error=True)
+        return ToolResult(call.id, content)
 
     async def aexecute(self, call: ToolCall) -> ToolResult:
         """Async counterpart of :meth:`execute`."""
-        raise NotImplementedError
+        try:
+            tool = self._registry.get(call.name)
+        except KeyError:
+            return ToolResult(call.id, f"unknown tool: {call.name}", is_error=True)
+        try:
+            if tool.ahandler is not None:
+                content = await tool.ahandler(call.arguments)
+            elif tool.handler is not None:
+                content = tool.handler(call.arguments)
+            else:
+                return ToolResult(
+                    call.id, f"tool {call.name} has no handler", is_error=True
+                )
+        except Exception as exc:  # noqa: BLE001 - surfaced back to the model
+            return ToolResult(call.id, f"tool error: {exc}", is_error=True)
+        return ToolResult(call.id, content)

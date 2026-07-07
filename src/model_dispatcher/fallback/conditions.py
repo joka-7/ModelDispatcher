@@ -19,7 +19,7 @@ def is_retryable(error_class: ErrorClass) -> bool:
 
     Only transient failures (network blips, ``503``-style hiccups) qualify.
     """
-    raise NotImplementedError
+    return error_class is ErrorClass.TRANSIENT
 
 
 def is_fallback_worthy(error_class: ErrorClass) -> bool:
@@ -28,7 +28,7 @@ def is_fallback_worthy(error_class: ErrorClass) -> bool:
     Rate limits and provider-side quota exhaustion qualify: the model is healthy
     but unavailable *to us right now*, so a different provider may succeed.
     """
-    raise NotImplementedError
+    return error_class in (ErrorClass.RATE_LIMIT, ErrorClass.QUOTA)
 
 
 def is_terminal(error_class: ErrorClass) -> bool:
@@ -37,4 +37,8 @@ def is_terminal(error_class: ErrorClass) -> bool:
     Authentication, invalid-request, and content-policy failures are the caller's
     problem; retrying or falling back cannot help.
     """
-    raise NotImplementedError
+    return error_class in (
+        ErrorClass.AUTH,
+        ErrorClass.INVALID,
+        ErrorClass.CONTENT,
+    )

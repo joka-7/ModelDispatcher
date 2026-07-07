@@ -53,7 +53,14 @@ class HandoffResponse:
             {"error": "quota_exceeded", "provider": "openai",
              "action": "trigger_key_wizard"}
         """
-        raise NotImplementedError
+        payload: dict[str, JSONValue] = {
+            "error": self.error,
+            "provider": self.provider,
+            "action": self.action.value,
+        }
+        if self.detail is not None:
+            payload["detail"] = self.detail
+        return payload
 
 
 class KeyWizardHandoff:
@@ -65,6 +72,7 @@ class KeyWizardHandoff:
         *,
         reason: str = "quota_exceeded",
         rate_window: bool = False,
+        detail: str | None = None,
     ) -> HandoffResponse:
         """Construct the handoff for a breach on ``provider``.
 
@@ -74,8 +82,15 @@ class KeyWizardHandoff:
             rate_window: When ``True`` the breach is a short rolling window
                 (``http_status`` 429); otherwise it is a budget/upgrade wall
                 (``http_status`` 402).
+            detail: Optional human-readable explanation for the UI.
 
         Returns:
             A :class:`HandoffResponse` carrying the ``trigger_key_wizard`` action.
         """
-        raise NotImplementedError
+        return HandoffResponse(
+            error=reason,
+            provider=provider,
+            action=HandoffAction.TRIGGER_KEY_WIZARD,
+            http_status=429 if rate_window else 402,
+            detail=detail,
+        )

@@ -41,11 +41,11 @@ class ConversationState:
 
     def append(self, message: Message) -> None:
         """Append a message to the transcript (assistant, tool result, ...)."""
-        raise NotImplementedError
+        self.messages.append(message)
 
     def add_usage(self, usage: Usage) -> None:
         """Fold a turn's token usage into the running total."""
-        raise NotImplementedError
+        self.usage = self.usage + usage
 
     def to_request(self) -> CompletionRequest:
         """Snapshot the current state into an immutable completion request.
@@ -53,4 +53,8 @@ class ConversationState:
         This is what the loop feeds to the fallback chain each turn, so the model
         always sees the full, up-to-date transcript including prior tool results.
         """
-        raise NotImplementedError
+        return CompletionRequest(
+            messages=tuple(self.messages),
+            tenant=self.tenant,
+            tools=self.tools,
+        )
