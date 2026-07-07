@@ -3,11 +3,11 @@
 A reusable internal Python library that acts as a resilient **AI Model
 Gateway/Router** shared across applications.
 
-> **Status: architectural skeleton.** This tree defines the public API surface —
-> fully typed signatures and complete docstrings — with method bodies left as
-> `...` / `raise NotImplementedError`. It imports and passes `mypy --strict`, but
-> carries no runtime logic yet. See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the
-> full design.
+> **Status: working library + demo.** The core runs end-to-end (routing,
+> fallback, quota, agent loop, onboarding), ships real OpenAI/Anthropic adapters,
+> is covered by a behavioral test suite, and has an interactive FastAPI + React
+> demo. See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the design and
+> [`demo/`](./demo) to run it in a browser.
 
 ## What it does
 
@@ -40,3 +40,14 @@ pytest
 ```
 
 Requires Python >= 3.12.
+
+## Try it in a browser
+
+```bash
+docker build -t model-dispatcher-demo .
+docker run --rm -p 8000:8000 model-dispatcher-demo   # http://localhost:8000
+```
+
+The demo drives the real gateway through keyless mock providers, so you can watch
+routing, fallback, quota meters, and the key-wizard handoff without any API keys.
+See [`demo/README.md`](./demo/README.md) for the two-process dev setup.

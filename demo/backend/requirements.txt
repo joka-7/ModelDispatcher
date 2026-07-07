@@ -1,0 +1,5 @@
+# Demo backend runtime dependencies. The gateway library itself is installed
+# from the repo root (`pip install ..` / `pip install -e ..`).
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
