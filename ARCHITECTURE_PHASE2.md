@@ -39,7 +39,7 @@ to fetch both — no private package index to stand up.
 | Artifact | Channel | `requirements.txt` / `package.json` entry |
 | --- | --- | --- |
 | Python gateway library | Git URL pin | `model-dispatcher @ git+https://github.com/joka-7/ModelDispatcher@v0.2.0` |
-| TypeScript client | GitHub Packages / git dependency | `@modeldispatcher/client` |
+| TypeScript client | GitHub Packages / git dependency | `@joka-7/modeldispatcher-client` |
 
 Both are distribution-agnostic at the call site: migrating later to a private PyPI + npm registry
 changes only the dependency spec line — nothing in the wrapper or app code. The existing `demo/`
@@ -66,7 +66,7 @@ Repo-level additions (the Phase 1 library under `src/` is unchanged):
 ModelDispatcher/
 ├── src/model_dispatcher/            # Phase 1 library (unchanged)
 ├── clients/
-│   └── typescript/                  # NEW — publishable @modeldispatcher/client
+│   └── typescript/                  # NEW — publishable @joka-7/modeldispatcher-client
 │       ├── package.json             # name, version, exports, react as optional peerDep
 │       ├── tsconfig.json            # strict: true
 │       └── src/
@@ -95,7 +95,7 @@ ModelDispatcher/
         ├── app/ (or pages/)         # Next.js frontend
         │   ├── lib/gateway.ts       # createGatewayClient() configured for this app
         │   └── components/KeyWizard.tsx
-        ├── package.json             # depends on @modeldispatcher/client + firebase
+        ├── package.json             # depends on @joka-7/modeldispatcher-client + firebase
         └── vercel.json              # runtime pins (python3.12), function config
 ```
 

@@ -1,11 +1,13 @@
 # The packaged AI Gateway (Phase 1), installed straight from GitHub so Vercel's
 # Python build needs only the GitHub token already present in the build env.
 # Pin to a tag/commit for reproducible deploys; bump to upgrade.
+#
+# Live providers (see api/_lib/wiring.py): each tier upgrades from the keyless
+# mock to a real adapter automatically once its API key env var is set
+# (MD_OPENAI_API_KEY / MD_ANTHROPIC_API_KEY / MD_GEMINI_API_KEY). Add the extras
+# for whichever vendors you actually configure — e.g. for OpenAI + Anthropic:
+#   model-dispatcher[openai,anthropic] @ git+https://github.com/joka-7/ModelDispatcher@v0.2.0
 model-dispatcher @ git+https://github.com/joka-7/ModelDispatcher@v0.2.0
 
 # Perimeter: Firebase App Check token verification.
 firebase-admin>=6.5
-
-# To use hosted providers instead of the bundled mocks, add the matching extra,
-# e.g.:
-#   model-dispatcher[openai] @ git+https://github.com/joka-7/ModelDispatcher@v0.2.0

@@ -8,7 +8,7 @@
 
 "use client";
 
-import type { WizardState } from "@modeldispatcher/client/react";
+import type { WizardState } from "@joka-7/modeldispatcher-client/react";
 
 export interface KeyWizardProps {
   /** The active handoff state, or `null` when the wizard is closed. */

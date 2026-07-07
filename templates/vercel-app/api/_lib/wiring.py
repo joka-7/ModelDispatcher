@@ -1,10 +1,14 @@
 """Gateway assembly for the Vercel function.
 
 Keeps the collaborator wiring — provider registry, settings, and the shared quota
-store — in one place so :mod:`api.gateway` stays a thin adapter. The shipped
-wiring uses keyless :class:`MockProvider` strategies so the template runs end to
-end with zero secrets; swapping in real providers is a one-line change per tier
-(see :func:`_register_providers`).
+store — in one place so :mod:`api.gateway` stays a thin adapter.
+
+:func:`_register_providers` registers a *real* adapter (:class:`OpenAIProvider`,
+:class:`AnthropicProvider`, :class:`GeminiProvider`) for every provider whose API
+key env var is set, and falls back to a keyless :class:`MockProvider` for any tier
+left unconfigured — so a fresh checkout with zero secrets still runs end to end
+(all mocks), and setting one or more keys upgrades exactly those tiers to live
+models with no other code change.
 
 The quota store is module-scoped so usage accumulates across warm invocations of
 the same serverless instance — the mechanism that lets a tenant actually reach the
@@ -12,6 +16,10 @@ Stage-2 key-wizard handoff.
 """
 
 from __future__ import annotations
+
+import os
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from model_dispatcher import (
     GatewaySettings,
@@ -23,8 +31,19 @@ from model_dispatcher import (
     TenantId,
     TenantQuota,
 )
-from model_dispatcher.providers import MockProvider
+from model_dispatcher.providers import (
+    AnthropicProvider,
+    GeminiProvider,
+    MockProvider,
+    OpenAIProvider,
+)
+from model_dispatcher.providers.base import ModelProvider
 from model_dispatcher.quota.store import InMemoryQuotaStore, QuotaStore
+
+#: Builds a live adapter from ``(model, tier, api_key)``. A plain callable (rather
+#: than a bare class reference) keeps the call site's signature explicit and
+#: identical across vendors, so mypy checks it without needing a per-call ignore.
+ProviderFactory = Callable[[str, ModelTier, str], ModelProvider]
 
 # Deliberately small per-tenant budget so the onboarding handoff is reachable
 # within a handful of requests. Tune per real product tiers.
@@ -39,32 +58,84 @@ _SETTINGS = GatewaySettings(quota_defaults=QuotaDefaults())
 _STORE: QuotaStore = InMemoryQuotaStore()
 
 
-def _register_providers(registry: ProviderRegistry) -> None:
-    """Register the model strategies, cheapest tier first.
+@dataclass(frozen=True, slots=True)
+class _ProviderSlot:
+    """One tier's live-vs-mock configuration.
 
-    Replace each :class:`MockProvider` with a real adapter to go live, e.g.::
-
-        from model_dispatcher.providers import OpenAIProvider, AnthropicProvider
-        registry.register(OpenAIProvider("gpt-4o-mini", tier=ModelTier.STANDARD))
-        registry.register(AnthropicProvider("claude-haiku-4-5", tier=ModelTier.FREE))
-
-    The rest of the pipeline (routing, fallback, quota) is unchanged.
+    Attributes:
+        tier: The cost tier this slot fills in the routing ladder.
+        api_key_env: Env var holding the vendor API key; unset means "use mock".
+        model_env: Env var overriding the default model id for this tier.
+        default_model: Model id used when ``model_env`` is unset.
+        build: Constructs the live adapter given ``(model, tier, api_key)``.
+        mock_reply: Canned reply the keyless fallback returns.
     """
-    registry.register(
-        MockProvider("mock:free", tier=ModelTier.FREE, reply="[free tier] Done.")
-    )
-    registry.register(
-        MockProvider(
-            "mock:standard", tier=ModelTier.STANDARD, reply="[standard tier] Done."
-        )
-    )
-    registry.register(
-        MockProvider(
-            "mock:premium",
-            tier=ModelTier.PREMIUM,
-            reply="[premium tier] Reasoned answer.",
-        )
-    )
+
+    tier: ModelTier
+    api_key_env: str
+    model_env: str
+    default_model: str
+    build: ProviderFactory
+    mock_reply: str
+
+
+# Cheapest tier first: routing/fallback consumes candidates in this order.
+_SLOTS: tuple[_ProviderSlot, ...] = (
+    _ProviderSlot(
+        tier=ModelTier.FREE,
+        api_key_env="MD_GEMINI_API_KEY",
+        model_env="MD_GEMINI_MODEL",
+        default_model="gemini-1.5-flash",
+        build=lambda model, tier, api_key: GeminiProvider(
+            model=model, tier=tier, api_key=api_key
+        ),
+        mock_reply="[free tier] Done.",
+    ),
+    _ProviderSlot(
+        tier=ModelTier.STANDARD,
+        api_key_env="MD_OPENAI_API_KEY",
+        model_env="MD_OPENAI_MODEL",
+        default_model="gpt-4o-mini",
+        build=lambda model, tier, api_key: OpenAIProvider(
+            model=model, tier=tier, api_key=api_key
+        ),
+        mock_reply="[standard tier] Done.",
+    ),
+    _ProviderSlot(
+        tier=ModelTier.PREMIUM,
+        api_key_env="MD_ANTHROPIC_API_KEY",
+        model_env="MD_ANTHROPIC_MODEL",
+        default_model="claude-opus-4-8",
+        build=lambda model, tier, api_key: AnthropicProvider(
+            model=model, tier=tier, api_key=api_key
+        ),
+        mock_reply="[premium tier] Reasoned answer.",
+    ),
+)
+
+
+def _register_providers(registry: ProviderRegistry) -> None:
+    """Register one provider per :data:`_SLOTS` entry, live where keyed.
+
+    Algorithm:
+        For each slot, read its API key env var. If set, construct the real
+        adapter with the configured (or default) model id and that key. If
+        unset, register a keyless :class:`MockProvider` at the same tier so the
+        routing ladder stays fully populated regardless of which keys are set.
+    """
+    for slot in _SLOTS:
+        api_key = os.environ.get(slot.api_key_env)
+        if api_key:
+            model = os.environ.get(slot.model_env, slot.default_model)
+            registry.register(slot.build(model, slot.tier, api_key))
+        else:
+            registry.register(
+                MockProvider(
+                    f"mock:{slot.tier.name.lower()}",
+                    tier=slot.tier,
+                    reply=slot.mock_reply,
+                )
+            )
 
 
 def build_gateway() -> ModelGateway:
