@@ -1,10 +1,13 @@
-"""Unit tests for the OpenAI/Anthropic adapter translation layers.
+"""Unit tests for the OpenAI/Anthropic/Gemini adapter translation layers.
 
 Translation and token estimation are exercised without any SDK installed (the
-vendor import happens only inside ``complete``/``classify_error``). The
-error-normalization tests are skipped unless the corresponding SDK extra is
-present, so CI stays fast and dependency-free while the mapping is still covered
-when the extras are installed.
+vendor import happens only inside ``complete``/``classify_error``), except for
+Gemini's ``_build_contents``/``_build_config``, which construct real
+``google.genai.types`` objects internally and so need that extra installed —
+those two are explicitly gated with ``importorskip``. The error-normalization
+tests are skipped unless the corresponding SDK extra is present, so CI stays
+fast and dependency-free while the mapping is still covered when the extras
+are installed.
 """
 
 from __future__ import annotations
@@ -19,9 +22,11 @@ from model_dispatcher import (
     Role,
     TenantId,
     ToolCall,
+    ToolResult,
     ToolSpec,
 )
 from model_dispatcher.providers.anthropic_provider import AnthropicProvider
+from model_dispatcher.providers.gemini_provider import GeminiProvider
 from model_dispatcher.providers.openai_provider import OpenAIProvider
 
 
@@ -110,9 +115,109 @@ def test_openai_to_response_parses_tool_calls() -> None:
     assert response.usage.total_tokens == 7
 
 
+def test_gemini_build_contents_maps_system_and_round_trips_tool_calls() -> None:
+    pytest.importorskip("google.genai")
+    provider = GeminiProvider(model="gemini-2.0-flash")
+    request = CompletionRequest(
+        messages=(
+            Message(role=Role.SYSTEM, content="sys"),
+            Message(role=Role.USER, content="weather in Rome?"),
+            Message(
+                role=Role.ASSISTANT,
+                tool_calls=(
+                    ToolCall(id="call_0", name="f", arguments={"city": "Rome"}),
+                ),
+            ),
+            Message(
+                role=Role.TOOL,
+                tool_result=ToolResult(call_id="call_0", content="Sunny, 24C"),
+            ),
+        ),
+        tenant=TenantId("t"),
+    )
+    system, contents = provider._build_contents(request)
+    assert system == "sys"
+    assert contents[1].role == "model"
+    assert contents[1].parts[0].function_call.name == "f"
+    # The tool result is matched back to its call by *name*, recovered from the
+    # assistant turn earlier in the same request (Gemini has no call-id concept).
+    assert contents[2].role == "user"
+    assert contents[2].parts[0].function_response.name == "f"
+    assert contents[2].parts[0].function_response.response == {"result": "Sunny, 24C"}
+
+
+def test_gemini_build_config_moves_system_and_tools() -> None:
+    pytest.importorskip("google.genai")
+    provider = GeminiProvider(model="gemini-2.0-flash")
+    request = _request()
+    system, _ = provider._build_contents(request)
+    config = provider._build_config(request, system)
+    assert config.system_instruction == "be terse"
+    assert config.tools[0].function_declarations[0].name == "f"
+
+
+def test_gemini_to_response_reads_text_and_usage() -> None:
+    provider = GeminiProvider(model="gemini-2.0-flash")
+    fake = SimpleNamespace(
+        candidates=[
+            SimpleNamespace(
+                content=SimpleNamespace(
+                    parts=[SimpleNamespace(text="hello ", function_call=None)]
+                )
+            )
+        ],
+        usage_metadata=SimpleNamespace(prompt_token_count=7, candidates_token_count=3),
+    )
+    response = provider._to_response(fake)
+    assert response.message.content == "hello "
+    assert response.usage.total_tokens == 10
+
+
+def test_gemini_to_response_parses_function_call() -> None:
+    provider = GeminiProvider(model="gemini-2.0-flash")
+    fake = SimpleNamespace(
+        candidates=[
+            SimpleNamespace(
+                content=SimpleNamespace(
+                    parts=[
+                        SimpleNamespace(
+                            text=None,
+                            function_call=SimpleNamespace(
+                                id=None, name="f", args={"x": 1}
+                            ),
+                        )
+                    ]
+                )
+            )
+        ],
+        usage_metadata=SimpleNamespace(prompt_token_count=5, candidates_token_count=2),
+    )
+    response = provider._to_response(fake)
+    assert response.message.tool_calls[0].name == "f"
+    assert response.message.tool_calls[0].arguments == {"x": 1}
+    # No id supplied by the model -> a synthetic one is minted so the rest of
+    # the pipeline (which addresses tool results by id) still has one to use.
+    assert response.message.tool_calls[0].id
+
+
+def test_gemini_classify_error_maps_status_codes() -> None:
+    genai_errors = pytest.importorskip("google.genai.errors")
+    provider = GeminiProvider(model="gemini-2.0-flash")
+    from model_dispatcher.types import ErrorClass
+
+    rate_limited = genai_errors.ClientError(429, {"error": {"message": "quota"}})
+    unauthorized = genai_errors.ClientError(401, {"error": {"message": "bad key"}})
+    down = genai_errors.ServerError(503, {"error": {"message": "down"}})
+
+    assert provider.classify_error(rate_limited) is ErrorClass.RATE_LIMIT
+    assert provider.classify_error(unauthorized) is ErrorClass.AUTH
+    assert provider.classify_error(down) is ErrorClass.TRANSIENT
+
+
 def test_estimate_tokens_is_positive() -> None:
     assert AnthropicProvider(model="claude-opus-4-8").estimate_tokens(_request()) > 0
     assert OpenAIProvider(model="gpt-4o-mini").estimate_tokens(_request()) > 0
+    assert GeminiProvider(model="gemini-2.0-flash").estimate_tokens(_request()) > 0
 
 
 def test_anthropic_classify_error_maps_rate_limit() -> None:

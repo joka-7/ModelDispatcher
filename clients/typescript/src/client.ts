@@ -1,15 +1,16 @@
 /**
  * {@link GatewayClient}: the facade a Vercel frontend calls.
  *
- * It composes the interceptor chain once (App Check → retry → timeout → fetch),
- * then `dispatch` runs a request through it and hands the final response to the
- * {@link decodeOutcome} decoder. Every transport failure is normalised into a
- * `{ kind: "network" }` outcome, so callers only ever `switch` on
- * {@link DispatchOutcome.kind} — no thrown errors escape `dispatch`.
+ * It composes the interceptor chain once (App Check → Auth → retry → timeout →
+ * fetch), then `dispatch` runs a request through it and hands the final
+ * response to the {@link decodeOutcome} decoder. Every transport failure is
+ * normalised into a `{ kind: "network" }` outcome, so callers only ever
+ * `switch` on {@link DispatchOutcome.kind} — no thrown errors escape `dispatch`.
  */
 
 import { GatewayEventBus } from "./events.js";
 import { appCheckInterceptor } from "./interceptors/appcheck.js";
+import { authInterceptor } from "./interceptors/auth.js";
 import { decodeOutcome } from "./interceptors/handoff.js";
 import {
   compose,
@@ -21,6 +22,7 @@ import { type RetryOptions, retryInterceptor } from "./interceptors/retry.js";
 import { TimeoutError, timeoutInterceptor } from "./interceptors/timeout.js";
 import type {
   AppCheckTokenProvider,
+  AuthTokenProvider,
   DispatchOutcome,
   GatewayResult,
   NetworkError,
@@ -35,6 +37,12 @@ export interface GatewayClientOptions {
   timeoutMs?: number;
   /** Firebase App Check token supplier. Omit to disable the header (dev). */
   appCheckTokenProvider?: AppCheckTokenProvider;
+  /**
+   * Firebase Auth ID token supplier. Omit to disable the header (dev only —
+   * the wrapper's default `MD_AUTH_MODE=enforce` will reject every request
+   * with `401` without it; see `_lib/auth.py`).
+   */
+  authTokenProvider?: AuthTokenProvider;
   /** Retry/backoff tuning and injected clock (for tests). */
   retry?: RetryOptions;
   /** Shared event bus; a fresh one is created when omitted. */
@@ -86,6 +94,9 @@ export class GatewayClient {
     const chain: Interceptor[] = [];
     if (options.appCheckTokenProvider) {
       chain.push(appCheckInterceptor(options.appCheckTokenProvider));
+    }
+    if (options.authTokenProvider) {
+      chain.push(authInterceptor(options.authTokenProvider));
     }
     chain.push(retryInterceptor(options.retry ?? {}));
     chain.push(timeoutInterceptor());

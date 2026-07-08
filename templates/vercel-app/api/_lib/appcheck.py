@@ -10,17 +10,18 @@ seams (``QuotaStore``, ``MetricsSink``). The gateway wrapper selects one via
 
 Note:
     App Check identifies the *app*, not the end user. The ``app_id`` claim gates
-    abuse; per-user/tenant identity still comes from the request (or, in a fuller
-    build, a paired Firebase Auth ID token). See :mod:`_lib.http` for that mapping.
+    abuse; per-user/tenant identity is a separate, stronger guard — see
+    :mod:`_lib.auth`, which verifies a Firebase Auth ID token and derives the
+    authoritative tenant id from it.
 """
 
 from __future__ import annotations
 
-import base64
-import json
 import os
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Protocol
+
+from _lib.firebase_app import ensure_default_app
 
 #: HTTP header the frontend sends the App Check attestation token in.
 APP_CHECK_HEADER = "X-Firebase-AppCheck"
@@ -55,57 +56,6 @@ class AppCheckVerifier(Protocol):
         ...
 
 
-def _parse_service_account_json(raw: str) -> dict[str, Any]:
-    """Parse a service-account credential from raw or base64-encoded JSON.
-
-    Vercel env vars are plain strings, so the credential can be pasted either as
-    the service-account JSON verbatim or, to dodge shell/UI quoting issues, as
-    its base64 encoding. Both are accepted transparently.
-    """
-    stripped = raw.strip()
-    try:
-        info: dict[str, Any] = json.loads(stripped)
-    except json.JSONDecodeError:
-        info = json.loads(base64.b64decode(stripped))
-    return info
-
-
-def _ensure_default_app() -> None:
-    """Initialise the default Firebase app on first use, once per process.
-
-    ``firebase_admin.app_check.verify_token`` requires a default app to exist.
-    Safe to call on every invocation: a warm serverless instance already has the
-    app and this is a cheap no-op after the first cold start.
-
-    Algorithm:
-        1. If a default app already exists, do nothing.
-        2. Else, if ``FIREBASE_SERVICE_ACCOUNT_JSON`` is set, build credentials
-           from it directly (accepts raw JSON or base64-encoded JSON) — this is
-           the path for Vercel, which has no persistent filesystem to point a
-           credentials *file* at.
-        3. Else, fall back to :func:`firebase_admin.initialize_app` with no
-           arguments, which resolves Application Default Credentials (e.g. a
-           ``GOOGLE_APPLICATION_CREDENTIALS`` file path) — the convenient path
-           for local development.
-    """
-    import firebase_admin
-
-    try:
-        firebase_admin.get_app()
-        return
-    except ValueError:
-        pass
-
-    service_account_json = os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON")
-    if service_account_json:
-        from firebase_admin import credentials
-
-        info = _parse_service_account_json(service_account_json)
-        firebase_admin.initialize_app(credentials.Certificate(info))
-    else:
-        firebase_admin.initialize_app()
-
-
 class FirebaseAppCheckVerifier:
     """Production verifier backed by ``firebase_admin.app_check.verify_token``.
 
@@ -138,7 +88,7 @@ class FirebaseAppCheckVerifier:
 
         from firebase_admin import app_check  # lazy import; see class docstring
 
-        _ensure_default_app()
+        ensure_default_app()
 
         try:
             claims = app_check.verify_token(token)

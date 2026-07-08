@@ -149,8 +149,9 @@ def build_tenant(tenant_id: str) -> TenantContext:
     """Build the per-request tenant context.
 
     Args:
-        tenant_id: Stable identifier for the calling tenant (from the request; in
-            a fuller build, derived from a verified Firebase Auth ID token).
+        tenant_id: Stable identifier for the calling tenant — the verified
+            Firebase Auth ``uid`` when auth is enforced, or the request's
+            declared ``tenant_id`` in dev mode. See :mod:`_lib.auth`.
 
     Returns:
         A zero-setup :class:`TenantContext` carrying the default quota, so a

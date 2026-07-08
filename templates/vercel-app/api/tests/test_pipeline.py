@@ -15,6 +15,7 @@ from _lib.appcheck import (
     FirebaseAppCheckVerifier,
     NoopAppCheckVerifier,
 )
+from _lib.auth import AuthClaims, FirebaseAuthVerifier, NoopAuthVerifier
 from _lib.pipeline import run_dispatch
 
 from model_dispatcher.exceptions import QuotaExceededError
@@ -34,8 +35,10 @@ def test_missing_app_check_is_rejected_before_the_gateway() -> None:
 
     status, body = run_dispatch(
         app_check_token=None,
+        authorization_header="Bearer ignored",
         raw_body=_BODY,
         verifier=FirebaseAppCheckVerifier(),
+        auth_verifier=NoopAuthVerifier(),
         gateway_factory=spy_factory,  # type: ignore[arg-type]
     )
 
@@ -44,25 +47,112 @@ def test_missing_app_check_is_rejected_before_the_gateway() -> None:
     assert built is False
 
 
-def test_happy_path_returns_200_and_a_trace() -> None:
-    """With App Check bypassed and the mock providers, a dispatch completes."""
+def test_missing_authorization_is_rejected_before_the_gateway() -> None:
+    """A missing/invalid Authorization header yields 401 before dispatch runs.
+
+    This is the guard that makes tenant identity authoritative: App Check alone
+    only proves the request came from the real app, not who the caller is.
+    """
+    built = False
+
+    def spy_factory() -> object:
+        nonlocal built
+        built = True
+        raise AssertionError("gateway must not be invoked when auth fails")
+
     status, body = run_dispatch(
         app_check_token="ignored",
+        authorization_header=None,
         raw_body=_BODY,
         verifier=NoopAppCheckVerifier(),
+        auth_verifier=FirebaseAuthVerifier(),
+        gateway_factory=spy_factory,  # type: ignore[arg-type]
+    )
+
+    assert status == 401
+    assert body == {"error": "unauthenticated"}
+    assert built is False
+
+
+def test_happy_path_returns_200_and_a_trace_with_complexity() -> None:
+    """With both guards bypassed and the mock providers, a dispatch completes."""
+    status, body = run_dispatch(
+        app_check_token="ignored",
+        authorization_header="Bearer ignored",
+        raw_body=_BODY,
+        verifier=NoopAppCheckVerifier(),
+        auth_verifier=NoopAuthVerifier(),
     )
 
     assert status == 200
     assert "final" in body
     assert body["stop_reason"]
+    assert body["complexity"]
+
+
+def test_verified_uid_overrides_a_spoofed_tenant_id() -> None:
+    """A caller cannot pick their own tenant by lying in the request body.
+
+    Once auth is enforced, the verified uid is the tenant id used for quota —
+    the body's ``tenant_id`` is ignored, not merely a fallback default.
+    """
+    seen_tenant_ids: list[str] = []
+
+    def spy_tenant_factory(tenant_id: str) -> object:
+        seen_tenant_ids.append(tenant_id)
+        from _lib.wiring import build_tenant
+
+        return build_tenant(tenant_id)
+
+    class _VerifiedAuth:
+        def verify(self, header_value: str | None) -> AuthClaims:
+            return AuthClaims(uid="verified-uid-123")
+
+    body = json.dumps({"prompt": "hello", "tenant_id": "someone-elses-tenant"}).encode()
+    status, _ = run_dispatch(
+        app_check_token="ignored",
+        authorization_header="Bearer real-token",
+        raw_body=body,
+        verifier=NoopAppCheckVerifier(),
+        auth_verifier=_VerifiedAuth(),  # type: ignore[arg-type]
+        tenant_factory=spy_tenant_factory,  # type: ignore[arg-type]
+    )
+
+    assert status == 200
+    assert seen_tenant_ids == ["verified-uid-123"]
+
+
+def test_disabled_auth_mode_falls_back_to_the_declared_tenant_id() -> None:
+    """With auth disabled (dev mode), the request's own tenant_id is used."""
+    seen_tenant_ids: list[str] = []
+
+    def spy_tenant_factory(tenant_id: str) -> object:
+        seen_tenant_ids.append(tenant_id)
+        from _lib.wiring import build_tenant
+
+        return build_tenant(tenant_id)
+
+    status, _ = run_dispatch(
+        app_check_token="ignored",
+        authorization_header=None,
+        raw_body=_BODY,
+        verifier=NoopAppCheckVerifier(),
+        auth_verifier=NoopAuthVerifier(),
+        tenant_factory=spy_tenant_factory,  # type: ignore[arg-type]
+    )
+
+    assert status == 200
+    assert seen_tenant_ids == ["t-1"]
 
 
 def test_bad_body_returns_400() -> None:
     """An empty prompt fails validation before the gateway runs."""
     status, body = run_dispatch(
         app_check_token="ignored",
+        authorization_header="Bearer ignored",
         raw_body=json.dumps({"prompt": "  "}).encode(),
         verifier=NoopAppCheckVerifier(),
+        auth_verifier=NoopAuthVerifier(),
     )
 
     assert status == 400
@@ -84,8 +174,10 @@ def test_quota_breach_maps_to_the_trigger_key_wizard_handoff() -> None:
 
     status, body = run_dispatch(
         app_check_token="ignored",
+        authorization_header="Bearer ignored",
         raw_body=_BODY,
         verifier=NoopAppCheckVerifier(),
+        auth_verifier=NoopAuthVerifier(),
         gateway_factory=_WizardGateway,  # type: ignore[arg-type]
     )
 

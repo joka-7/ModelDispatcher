@@ -93,6 +93,16 @@ export interface GatewayResult {
 /** Zero-argument async supplier of a Firebase App Check token. */
 export type AppCheckTokenProvider = () => Promise<string | null>;
 
+/**
+ * Zero-argument async supplier of a Firebase Auth ID token.
+ *
+ * Distinct from {@link AppCheckTokenProvider}: App Check attests the *app*,
+ * this attests the *end user* — the wrapper derives the authoritative tenant
+ * id (and thus quota isolation) from this token's verified `uid`, not from
+ * anything in the request body. See `_lib/auth.py`.
+ */
+export type AuthTokenProvider = () => Promise<string | null>;
+
 /** Injectable clock/timer seam so retry backoff is deterministic under test. */
 export interface Scheduler {
   /** Resolve after `ms` milliseconds. */

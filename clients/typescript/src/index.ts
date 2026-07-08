@@ -24,6 +24,7 @@ export { compose } from "./interceptors/interceptor.js";
 export type { GatewayRequestConfig, Interceptor, Send } from "./interceptors/interceptor.js";
 
 export { appCheckInterceptor, APP_CHECK_HEADER } from "./interceptors/appcheck.js";
+export { authInterceptor, AUTHORIZATION_HEADER } from "./interceptors/auth.js";
 export { timeoutInterceptor, TimeoutError } from "./interceptors/timeout.js";
 export {
   retryInterceptor,
@@ -41,6 +42,7 @@ export {
 export type {
   Attempt,
   AppCheckTokenProvider,
+  AuthTokenProvider,
   DispatchOutcome,
   GatewayError,
   GatewayResult,

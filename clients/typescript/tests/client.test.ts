@@ -165,3 +165,40 @@ describe("GatewayClient App Check", () => {
     expect(headers["X-Firebase-AppCheck"]).toBe("attestation-token");
   });
 });
+
+describe("GatewayClient Auth", () => {
+  it("attaches the Authorization: Bearer header from the provider", async () => {
+    const seen = vi.fn();
+    const capturingFetch = ((_url: string, init?: RequestInit) => {
+      seen(init?.headers);
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    }) as unknown as typeof fetch;
+
+    const client = new GatewayClient({
+      fetchImpl: capturingFetch,
+      authTokenProvider: async () => "id-token-abc",
+    });
+    await client.dispatch({ prompt: "hi" });
+
+    expect(seen).toHaveBeenCalledOnce();
+    const headers = seen.mock.calls[0]![0] as Record<string, string>;
+    expect(headers["Authorization"]).toBe("Bearer id-token-abc");
+  });
+
+  it("omits the header when the provider resolves null (dev bypass)", async () => {
+    const seen = vi.fn();
+    const capturingFetch = ((_url: string, init?: RequestInit) => {
+      seen(init?.headers);
+      return Promise.resolve(new Response("{}", { status: 200 }));
+    }) as unknown as typeof fetch;
+
+    const client = new GatewayClient({
+      fetchImpl: capturingFetch,
+      authTokenProvider: async () => null,
+    });
+    await client.dispatch({ prompt: "hi" });
+
+    const headers = seen.mock.calls[0]![0] as Record<string, string>;
+    expect(headers["Authorization"]).toBeUndefined();
+  });
+});

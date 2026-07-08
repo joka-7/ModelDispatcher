@@ -5,6 +5,13 @@
  * `dispatch` plus reactive `wizard` state; the component switches on
  * {@link DispatchOutcome.kind} for inline feedback while the shared bus drives
  * the {@link KeyWizard} independently. Nothing here knows about HTTP status codes.
+ *
+ * The request body carries no `tenant_id`: with auth enforced (the default),
+ * the wrapper derives the tenant from the verified Firebase Auth token
+ * `./lib/gateway.ts` attaches, not from anything the client claims — see
+ * `api/_lib/auth.py`. A hardcoded `tenant_id` here would put every visitor to
+ * this page on one shared quota bucket, which is exactly the bug this comment
+ * exists to not reintroduce.
  */
 
 "use client";
@@ -26,7 +33,7 @@ export default function Page(): JSX.Element {
     if (!prompt.trim() || busy) return;
     setBusy(true);
     try {
-      setOutcome(await dispatch({ prompt, tenant_id: "demo-tenant" }));
+      setOutcome(await dispatch({ prompt }));
     } finally {
       setBusy(false);
     }
