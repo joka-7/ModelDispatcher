@@ -15,10 +15,12 @@ from http.server import BaseHTTPRequestHandler
 from typing import Any
 
 from _lib.appcheck import APP_CHECK_HEADER, build_verifier
+from _lib.auth import AUTHORIZATION_HEADER, build_auth_verifier
 from _lib.pipeline import run_dispatch
 
 # Built once per warm serverless instance and reused across invocations.
 _VERIFIER = build_verifier()
+_AUTH_VERIFIER = build_auth_verifier()
 
 
 class handler(BaseHTTPRequestHandler):  # noqa: N801 - Vercel mandates this exact name
@@ -30,8 +32,10 @@ class handler(BaseHTTPRequestHandler):  # noqa: N801 - Vercel mandates this exac
         raw_body = self.rfile.read(length) if length else b"{}"
         status, body = run_dispatch(
             app_check_token=self.headers.get(APP_CHECK_HEADER),
+            authorization_header=self.headers.get(AUTHORIZATION_HEADER),
             raw_body=raw_body,
             verifier=_VERIFIER,
+            auth_verifier=_AUTH_VERIFIER,
         )
         self._write_json(status, body)
 

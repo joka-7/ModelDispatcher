@@ -44,15 +44,23 @@ def parse_dispatch_request(payload: dict[str, Any]) -> tuple[CompletionRequest, 
     return request, resolved
 
 
-def serialise_result(result: RunResult) -> dict[str, Any]:
+def serialise_result(result: RunResult, complexity: str) -> dict[str, Any]:
     """Render a :class:`RunResult` into the JSON shape the TS client expects.
 
     Mirrors ``GatewayResult`` in the TypeScript client and the demo backend, so
-    the two stay wire-compatible.
+    the two stay wire-compatible — including ``complexity``, which the gateway
+    itself doesn't return on :class:`RunResult` (routing consumes it internally
+    and moves on), so the caller must classify separately and pass it in here.
+
+    Args:
+        result: The completed dispatch to serialise.
+        complexity: The :class:`~model_dispatcher.types.TaskComplexity` name the
+            request was triaged to, e.g. ``"TRIVIAL"``.
     """
     return {
         "final": result.final_message.content,
         "stop_reason": result.stop_reason.value,
+        "complexity": complexity,
         "usage": {
             "prompt": result.usage.prompt_tokens,
             "completion": result.usage.completion_tokens,

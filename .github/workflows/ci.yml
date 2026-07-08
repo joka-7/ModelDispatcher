@@ -90,6 +90,59 @@ jobs:
         working-directory: clients/typescript
         run: npm run build
 
+  vercel_template_frontend:
+    name: Vercel template — build Next.js frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: clients/typescript/package-lock.json
+
+      - name: Build the TS client
+        working-directory: clients/typescript
+        run: |
+          npm ci
+          npm run build
+
+      - name: Point the template at the workspace TS client
+        # @joka-7/modeldispatcher-client is only published on a tagged release
+        # (see release.yml) and may not exist yet or may lag this commit.
+        # Building against the workspace copy means this check is self-contained
+        # and always exercises the client code actually changed in this PR —
+        # not a possibly-stale published version.
+        working-directory: templates/vercel-app
+        run: |
+          node -e "
+            const fs = require('fs');
+            const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            p.dependencies['@joka-7/modeldispatcher-client'] = 'file:../../clients/typescript';
+            fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
+          "
+
+      - name: Install template dependencies
+        # npm install, not ci: the file: dependency swap above intentionally
+        # diverges from package-lock.json.
+        working-directory: templates/vercel-app
+        run: npm install
+
+      - name: Type-check
+        working-directory: templates/vercel-app
+        run: npm run typecheck
+
+      - name: Build (next build)
+        # A real build with zero Firebase env vars set — this is what catches
+        # both a missing/broken app/lib/gateway.ts and any Firebase call that
+        # isn't properly deferred to runtime (see that file's module doc).
+        working-directory: templates/vercel-app
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
   vercel_template:
     name: Vercel template — lint & test wrapper (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
