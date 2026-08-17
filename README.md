@@ -25,6 +25,23 @@ Gateway/Router** shared across applications.
 - **Two-stage onboarding** — zero-setup free tier by default; when limits are hit,
   a structured `402`/`429` handoff payload drives a GUI key wizard.
 
+## Install
+
+```bash
+pip install "model-dispatcher[openai,anthropic,gemini]"
+```
+
+Each provider adapter is an optional extra — install only the ones you key.
+Not yet published to PyPI (or need a version ahead of the latest tag)? Pin to
+a git ref instead:
+
+```bash
+pip install "model-dispatcher[openai] @ git+https://github.com/joka-7/ModelDispatcher@v0.2.0"
+```
+
+The TypeScript client (`@joka-7/modeldispatcher-client`) is published to
+GitHub Packages — see [`clients/typescript`](./clients/typescript).
+
 ## Layout
 
 See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the directory layout, class
