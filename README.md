@@ -42,6 +42,48 @@ pip install "model-dispatcher[openai] @ git+https://github.com/joka-7/ModelDispa
 The TypeScript client (`@joka-7/modeldispatcher-client`) is published to
 GitHub Packages — see [`clients/typescript`](./clients/typescript).
 
+## Quickstart
+
+No API keys needed — this uses the keyless `MockProvider`:
+
+```bash
+pip install -e .            # from a clone of this repo
+python examples/basic_agent.py
+```
+
+```python
+from model_dispatcher import (
+    CompletionRequest, Message, ModelGateway, ProviderRegistry,
+    Role, TenantContext, TenantId, TenantQuota,
+)
+from model_dispatcher.providers import MockProvider  # swap for OpenAIProvider, etc.
+
+providers = ProviderRegistry()
+providers.register(MockProvider("mock:free"))
+gateway = ModelGateway.create(providers)  # build once at startup
+
+tenant = TenantContext(
+    tenant_id=TenantId("demo-user"),
+    quota=TenantQuota(requests_per_min=20, tokens_per_min=40_000, tokens_per_day=1_000_000),
+)
+request = CompletionRequest(
+    messages=(Message(role=Role.USER, content="Hello!"),),
+    tenant=tenant.tenant_id,
+)
+result = gateway.dispatch(request, tenant)
+print(result.final_message.content)
+```
+
+See [`examples/basic_agent.py`](./examples/basic_agent.py) for the full
+version with a tool the agent calls on its own.
+
+## Using it from another app
+
+**[`docs/USAGE.md`](./docs/USAGE.md)** is the integration guide: installing
+into a Python backend, wiring the TypeScript client to a frontend, mapping
+gateway errors onto HTTP responses, and pinning versions across multiple
+consuming repos.
+
 ## Layout
 
 See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the directory layout, class

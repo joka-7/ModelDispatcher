@@ -39,7 +39,7 @@ packages = ["src/model_dispatcher"]
 [tool.ruff]
 line-length = 88
 target-version = "py312"
-src = ["src", "tests"]
+src = ["src", "tests", "examples"]
 
 [tool.ruff.lint]
 # PEP 8 (E, W), pyflakes (F), isort (I), pep8-naming (N), pyupgrade (UP),
