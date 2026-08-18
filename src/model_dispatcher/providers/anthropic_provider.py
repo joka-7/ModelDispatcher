@@ -56,18 +56,22 @@ class AnthropicProvider(ModelProvider):
         self._counter = TokenCounter()
 
     @override
-    def complete(self, request: CompletionRequest) -> CompletionResponse:
+    def complete(
+        self, request: CompletionRequest, *, api_key: str | None = None
+    ) -> CompletionResponse:
         import anthropic
 
-        client = anthropic.Anthropic(api_key=self._api_key)
+        client = anthropic.Anthropic(api_key=api_key or self._api_key)
         response = client.messages.create(**self._build_kwargs(request))
         return self._to_response(response)
 
     @override
-    async def acomplete(self, request: CompletionRequest) -> CompletionResponse:
+    async def acomplete(
+        self, request: CompletionRequest, *, api_key: str | None = None
+    ) -> CompletionResponse:
         import anthropic
 
-        client = anthropic.AsyncAnthropic(api_key=self._api_key)
+        client = anthropic.AsyncAnthropic(api_key=api_key or self._api_key)
         response = await client.messages.create(**self._build_kwargs(request))
         return self._to_response(response)
 

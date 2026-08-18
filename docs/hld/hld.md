@@ -243,10 +243,12 @@ Counters live behind the `QuotaStore` **Protocol**; this build ships only
 
 `PerimeterValidator.validate` is the single choke point for untrusted inbound requests:
 tenant authN, empty-message rejection, payload-size caps, and egress allowlist —
-failing fast with `PerimeterViolation` (403). `CredentialResolver.resolve` implements the
-precedence chain **user key → tenant key → free tier → global app key**, which is the
-mechanical basis of onboarding Stage 1. `SecretRedactor` scrubs secrets/PII from anything
-bound for logs or metrics.
+failing fast with `PerimeterViolation` (403). `CredentialResolver.resolve_candidates`
+implements the precedence chain **user key(s) → tenant key(s) → free tier → global app
+key**, which is the mechanical basis of onboarding Stage 1. A tenant may pool several
+keys per provider (comma-separated); `ModelInvocationHandler` rotates through all of
+them on failure before falling back to the next provider candidate. `SecretRedactor`
+scrubs secrets/PII from anything bound for logs or metrics.
 
 ### 6.7 Onboarding — Two-stage flow
 

@@ -64,10 +64,12 @@ class GeminiProvider(ModelProvider):
         self._counter = TokenCounter()
 
     @override
-    def complete(self, request: CompletionRequest) -> CompletionResponse:
+    def complete(
+        self, request: CompletionRequest, *, api_key: str | None = None
+    ) -> CompletionResponse:
         from google import genai
 
-        client = genai.Client(api_key=self._api_key)
+        client = genai.Client(api_key=api_key or self._api_key)
         system, contents = self._build_contents(request)
         response = client.models.generate_content(
             model=self._model,
@@ -77,10 +79,12 @@ class GeminiProvider(ModelProvider):
         return self._to_response(response)
 
     @override
-    async def acomplete(self, request: CompletionRequest) -> CompletionResponse:
+    async def acomplete(
+        self, request: CompletionRequest, *, api_key: str | None = None
+    ) -> CompletionResponse:
         from google import genai
 
-        client = genai.Client(api_key=self._api_key)
+        client = genai.Client(api_key=api_key or self._api_key)
         system, contents = self._build_contents(request)
         response = await client.aio.models.generate_content(
             model=self._model,

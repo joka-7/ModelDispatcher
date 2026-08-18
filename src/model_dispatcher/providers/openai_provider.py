@@ -75,18 +75,26 @@ class OpenAIProvider(ModelProvider):
         self._counter = TokenCounter()
 
     @override
-    def complete(self, request: CompletionRequest) -> CompletionResponse:
+    def complete(
+        self, request: CompletionRequest, *, api_key: str | None = None
+    ) -> CompletionResponse:
         import openai
 
-        client = openai.OpenAI(api_key=self._api_key, base_url=self._base_url)
+        client = openai.OpenAI(
+            api_key=api_key or self._api_key, base_url=self._base_url
+        )
         response = client.chat.completions.create(**self._build_kwargs(request))
         return self._to_response(response)
 
     @override
-    async def acomplete(self, request: CompletionRequest) -> CompletionResponse:
+    async def acomplete(
+        self, request: CompletionRequest, *, api_key: str | None = None
+    ) -> CompletionResponse:
         import openai
 
-        client = openai.AsyncOpenAI(api_key=self._api_key, base_url=self._base_url)
+        client = openai.AsyncOpenAI(
+            api_key=api_key or self._api_key, base_url=self._base_url
+        )
         response = await client.chat.completions.create(**self._build_kwargs(request))
         return self._to_response(response)
 

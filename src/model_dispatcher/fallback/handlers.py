@@ -76,6 +76,10 @@ class AttemptRecord:
     provider_name: str
     error_class: ErrorClass | None = None
     detail: str | None = None
+    credential_ref: str | None = None
+    """Masked reference (:attr:`Credential.secret_ref`) to the key this attempt
+    used, when the provider isn't keyless — lets a trace distinguish "openai
+    failed on key ****1234, succeeded on ****5678" from a same-key retry."""
 
 
 @dataclass(slots=True)
@@ -88,7 +92,12 @@ class InvocationContext:
         candidates: Ordered providers from the router; index 0 is "current".
             Consumed from the front as the chain falls back.
         attempts: Append-only record of every provider tried this turn.
-        credential: Credential resolved for the current candidate.
+        credentials: Every credential resolved for the current candidate, in
+            try-order (see :meth:`~model_dispatcher.security.credentials.
+            CredentialResolver.resolve_candidates`) — usually one, but a
+            tenant with several pooled keys for the same provider gets one
+            entry per key, so :class:`ModelInvocationHandler` can rotate
+            through them before giving up on the provider.
         reservation: Quota decision for the current candidate (drives commit).
         response: Populated by the invocation handler on success.
         error: Set when a handler decides the chain must ``STOP``.
@@ -99,7 +108,7 @@ class InvocationContext:
     tenant: TenantContext
     candidates: list[ModelProvider]
     attempts: list[AttemptRecord] = field(default_factory=list)
-    credential: Credential | None = None
+    credentials: list[Credential] = field(default_factory=list)
     reservation: QuotaDecision | None = None
     response: CompletionResponse | None = None
     error: Exception | None = None
@@ -112,7 +121,7 @@ class InvocationContext:
 
     def reset_candidate_state(self) -> None:
         """Clear per-candidate scratch state before falling back to the next."""
-        self.credential = None
+        self.credentials = []
         self.reservation = None
 
 
@@ -161,10 +170,12 @@ class PerimeterHandler(FallbackHandler):
 
 
 class CredentialHandler(FallbackHandler):
-    """Resolve the credential for the current candidate via the precedence chain.
+    """Resolve the credential(s) for the current candidate via the precedence chain.
 
     Missing user/tenant keys fall back to the rate-limited global app key — the
-    mechanical basis of the zero-setup onboarding stage.
+    mechanical basis of the zero-setup onboarding stage. When the tenant has
+    pooled more than one key for this provider, every one of them is attached
+    so :class:`ModelInvocationHandler` can rotate through them.
     """
 
     def __init__(self, resolver: CredentialResolver) -> None:
@@ -172,11 +183,13 @@ class CredentialHandler(FallbackHandler):
         self._resolver = resolver
 
     def handle(self, context: InvocationContext) -> HandlerOutcome:
-        """Attach the highest-precedence credential to the context."""
+        """Attach every usable credential for the current candidate."""
         provider = context.current
         if provider is None:
             return HandlerOutcome.FALLBACK
-        context.credential = self._resolver.resolve(context.tenant, provider)
+        context.credentials = self._resolver.resolve_candidates(
+            context.tenant, provider
+        )
         return HandlerOutcome.CONTINUE
 
     async def ahandle(self, context: InvocationContext) -> HandlerOutcome:
@@ -244,17 +257,28 @@ class QuotaHandler(FallbackHandler):
 
 
 class ModelInvocationHandler(FallbackHandler):
-    """Call the current candidate, with transient retry and rate-limit failover.
+    """Call the current candidate, with key rotation, retry, and rate-limit failover.
 
     Algorithm:
-        Attempt ``provider.complete``. On success, record the attempt, commit the
-        quota reservation against actual usage, and return ``SUCCESS``. On a
-        vendor error, normalise it via ``provider.classify_error`` and:
+        For each credential in ``context.credentials`` (in order — usually one,
+        but a tenant pooling several keys for the same provider gets one per
+        key), attempt ``provider.complete`` with that key up to ``max_attempts``
+        times. On success, record the attempt, commit the quota reservation
+        against actual usage, and return ``SUCCESS``. On a vendor error,
+        normalise it via ``provider.classify_error`` and:
 
-        * transient → retry the same provider up to ``max_attempts`` with
-          exponential backoff, then fall back;
-        * rate-limit / quota → ``FALLBACK`` to the next candidate immediately;
-        * terminal (auth/invalid/content) → ``STOP`` with a mapped exception.
+        * transient → retry the *same* credential after exponential backoff,
+          up to ``max_attempts``, then move to the next credential;
+        * rate-limit / quota → move to the next credential immediately;
+        * terminal (auth/invalid/content) → ``STOP``, aborting the whole
+          dispatch with a mapped exception (unchanged from single-key
+          behaviour: a terminal failure is treated as the caller's problem,
+          not something a different key *or* a different provider is
+          expected to fix).
+
+        Once every credential (and its retry budget) is exhausted without a
+        success or a terminal ``STOP``, the whole candidate is given up on and
+        the chain falls back to the next provider.
     """
 
     def __init__(
@@ -272,44 +296,75 @@ class ModelInvocationHandler(FallbackHandler):
         self._backoff_cap = backoff_cap
 
     def handle(self, context: InvocationContext) -> HandlerOutcome:
-        """Invoke the current candidate synchronously."""
+        """Invoke the current candidate synchronously, rotating credentials."""
         provider = context.current
         if provider is None:
             return HandlerOutcome.FALLBACK
 
-        for attempt in range(1, self._max_attempts + 1):
-            try:
-                response = provider.complete(context.request)
-            except ModelDispatcherError:
-                raise
-            except Exception as exc:  # noqa: BLE001 - normalised via classify_error
-                outcome = self._on_error(context, provider, exc, attempt)
-                if outcome is None:
-                    time.sleep(self._backoff_delay(attempt))
-                    continue
-                return outcome
-            return self._on_success(context, provider, response)
+        credentials: list[Credential | None] = list(context.credentials) or [None]
+        for index, credential in enumerate(credentials):
+            api_key = credential.raw_key if credential is not None else None
+            has_more_credentials = index < len(credentials) - 1
 
-        return HandlerOutcome.FALLBACK  # retries exhausted; try the next provider
+            for attempt in range(1, self._max_attempts + 1):
+                try:
+                    response = provider.complete(context.request, api_key=api_key)
+                except ModelDispatcherError:
+                    raise
+                except Exception as exc:  # noqa: BLE001 - normalised via classify_error
+                    outcome = self._on_error(
+                        context,
+                        provider,
+                        exc,
+                        attempt,
+                        credential,
+                        has_more_credentials,
+                    )
+                    if outcome is None:
+                        time.sleep(self._backoff_delay(attempt))
+                        continue
+                    if outcome is HandlerOutcome.FALLBACK and has_more_credentials:
+                        break  # this credential is done; try the next pooled key
+                    return outcome
+                return self._on_success(context, provider, response, credential)
+
+        # Every credential (and its retry budget) is exhausted.
+        return HandlerOutcome.FALLBACK
 
     async def ahandle(self, context: InvocationContext) -> HandlerOutcome:
-        """Invoke the current candidate asynchronously."""
+        """Invoke the current candidate asynchronously, rotating credentials."""
         provider = context.current
         if provider is None:
             return HandlerOutcome.FALLBACK
 
-        for attempt in range(1, self._max_attempts + 1):
-            try:
-                response = await provider.acomplete(context.request)
-            except ModelDispatcherError:
-                raise
-            except Exception as exc:  # noqa: BLE001 - normalised via classify_error
-                outcome = self._on_error(context, provider, exc, attempt)
-                if outcome is None:
-                    await asyncio.sleep(self._backoff_delay(attempt))
-                    continue
-                return outcome
-            return self._on_success(context, provider, response)
+        credentials: list[Credential | None] = list(context.credentials) or [None]
+        for index, credential in enumerate(credentials):
+            api_key = credential.raw_key if credential is not None else None
+            has_more_credentials = index < len(credentials) - 1
+
+            for attempt in range(1, self._max_attempts + 1):
+                try:
+                    response = await provider.acomplete(
+                        context.request, api_key=api_key
+                    )
+                except ModelDispatcherError:
+                    raise
+                except Exception as exc:  # noqa: BLE001 - normalised via classify_error
+                    outcome = self._on_error(
+                        context,
+                        provider,
+                        exc,
+                        attempt,
+                        credential,
+                        has_more_credentials,
+                    )
+                    if outcome is None:
+                        await asyncio.sleep(self._backoff_delay(attempt))
+                        continue
+                    if outcome is HandlerOutcome.FALLBACK and has_more_credentials:
+                        break
+                    return outcome
+                return self._on_success(context, provider, response, credential)
 
         return HandlerOutcome.FALLBACK
 
@@ -318,9 +373,15 @@ class ModelInvocationHandler(FallbackHandler):
         context: InvocationContext,
         provider: ModelProvider,
         response: CompletionResponse,
+        credential: Credential | None,
     ) -> HandlerOutcome:
         """Record success and reconcile the quota reservation."""
-        context.attempts.append(AttemptRecord(provider.name))
+        context.attempts.append(
+            AttemptRecord(
+                provider.name,
+                credential_ref=credential.secret_ref if credential else None,
+            )
+        )
         context.response = response
         if context.reservation is not None:
             self._manager.commit(context.tenant, context.reservation, response.usage)
@@ -332,18 +393,38 @@ class ModelInvocationHandler(FallbackHandler):
         provider: ModelProvider,
         exc: Exception,
         attempt: int,
+        credential: Credential | None,
+        has_more_credentials: bool,
     ) -> HandlerOutcome | None:
         """Classify an error and decide the next step.
 
-        Returns ``None`` to signal "retry the same provider after backoff", or a
-        concrete :class:`HandlerOutcome` (FALLBACK / STOP) to act on now.
+        Returns ``None`` to signal "retry the same credential after backoff",
+        or a concrete :class:`HandlerOutcome`:
+
+        * ``FALLBACK`` — this credential is done (fallback-worthy, or a
+          transient failure with retries exhausted). The caller advances to
+          the next pooled credential when ``has_more_credentials``, or to the
+          next provider candidate otherwise.
+        * ``STOP`` — a terminal failure. Normally aborts the whole dispatch,
+          *except* an auth failure with another pooled credential still
+          available: a bad key is that key's problem, not the provider's, so
+          the next key gets a chance before giving up on the provider.
         """
         error_class = provider.classify_error(exc)
-        context.attempts.append(AttemptRecord(provider.name, error_class, str(exc)))
+        context.attempts.append(
+            AttemptRecord(
+                provider.name,
+                error_class,
+                str(exc),
+                credential_ref=credential.secret_ref if credential else None,
+            )
+        )
 
         if is_retryable(error_class) and attempt < self._max_attempts:
             return None
         if is_fallback_worthy(error_class) or is_retryable(error_class):
+            return HandlerOutcome.FALLBACK
+        if error_class is ErrorClass.AUTH and has_more_credentials:
             return HandlerOutcome.FALLBACK
 
         context.error = self._terminal_error(provider.name, error_class, exc)

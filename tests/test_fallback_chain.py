@@ -15,7 +15,7 @@ from model_dispatcher import (
     Role,
     TenantContext,
 )
-from model_dispatcher.exceptions import AllProvidersExhausted
+from model_dispatcher.exceptions import AllProvidersExhausted, AuthenticationError
 from model_dispatcher.fallback.conditions import (
     is_fallback_worthy,
     is_retryable,
@@ -84,6 +84,81 @@ def test_all_providers_exhausted_raises(
     with pytest.raises(AllProvidersExhausted) as excinfo:
         gateway.dispatch(_request(tenant), tenant)
     assert excinfo.value.http_status == 503
+
+
+# -- Pooled-credential rotation (a tenant with several keys for one provider) #
+
+
+def test_pooled_keys_rotate_on_the_same_provider_before_falling_back(
+    make_gateway: Callable[..., ModelGateway],
+    make_tenant: Callable[..., TenantContext],
+) -> None:
+    provider = MockProvider(
+        "mock:free",
+        tier=ModelTier.FREE,
+        fail_times=1,
+        fail_with=ErrorClass.RATE_LIMIT,
+        reply="via key 2",
+    )
+    other = MockProvider("mock:cheap", tier=ModelTier.CHEAP, reply="should not run")
+    gateway = make_gateway(provider, other)
+    tenant = make_tenant(**{"user_key:mock": "aaaa1111, bbbb2222"})
+
+    result = gateway.dispatch(_request(tenant), tenant)
+
+    assert result.final_message.content == "via key 2"
+    # Both attempts stayed on the same provider — no fallback to `other` needed.
+    assert [a.provider_name for a in result.steps[0].attempts] == [
+        "mock:free",
+        "mock:free",
+    ]
+    # The actual raw key differed per attempt, proving real rotation (not a
+    # blind retry with the same credential).
+    assert provider.received_api_keys == ["aaaa1111", "bbbb2222"]
+    # ...and the audit trail only ever carries the masked reference.
+    assert [a.credential_ref for a in result.steps[0].attempts] == [
+        "****1111",
+        "****2222",
+    ]
+
+
+def test_auth_failure_on_one_pooled_key_tries_the_next_before_stopping(
+    make_gateway: Callable[..., ModelGateway],
+    make_tenant: Callable[..., TenantContext],
+) -> None:
+    """A revoked/bad key shouldn't doom a sibling key that's still valid."""
+    provider = MockProvider(
+        "mock:free",
+        tier=ModelTier.FREE,
+        fail_times=1,
+        fail_with=ErrorClass.AUTH,
+        reply="via good key",
+    )
+    gateway = make_gateway(provider)
+    tenant = make_tenant(**{"user_key:mock": "bad-key,good-key"})
+
+    result = gateway.dispatch(_request(tenant), tenant)
+
+    assert result.final_message.content == "via good key"
+    assert provider.received_api_keys == ["bad-key", "good-key"]
+
+
+def test_auth_failure_stops_the_dispatch_once_no_pooled_keys_remain(
+    make_gateway: Callable[..., ModelGateway],
+    make_tenant: Callable[..., TenantContext],
+) -> None:
+    """Unchanged from single-key behaviour: a terminal failure with no other
+    key left to try aborts the whole dispatch rather than trying another
+    provider candidate."""
+    provider = MockProvider(
+        "mock:free", tier=ModelTier.FREE, fail_times=99, fail_with=ErrorClass.AUTH
+    )
+    other = MockProvider("mock:cheap", tier=ModelTier.CHEAP, reply="never reached")
+    gateway = make_gateway(provider, other)
+    tenant = make_tenant(**{"user_key:mock": "only-key"})
+
+    with pytest.raises(AuthenticationError):
+        gateway.dispatch(_request(tenant), tenant)
 
 
 def test_condition_predicates_partition_error_classes() -> None:

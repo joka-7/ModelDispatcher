@@ -38,11 +38,15 @@ class LocalProvider(ModelProvider):
         self._endpoint = endpoint
 
     @override
-    def complete(self, request: CompletionRequest) -> CompletionResponse:
+    def complete(
+        self, request: CompletionRequest, *, api_key: str | None = None
+    ) -> CompletionResponse:
         raise NotImplementedError
 
     @override
-    async def acomplete(self, request: CompletionRequest) -> CompletionResponse:
+    async def acomplete(
+        self, request: CompletionRequest, *, api_key: str | None = None
+    ) -> CompletionResponse:
         raise NotImplementedError
 
     @override
