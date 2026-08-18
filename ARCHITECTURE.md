@@ -60,6 +60,11 @@ the key seam — each adapter maps its vendor SDK's exceptions onto the normalis
 so nothing downstream ever imports a vendor exception type. Adapters
 (`OpenAIProvider`, `AnthropicProvider`, `GeminiProvider`, `LocalProvider`) import
 their SDKs lazily inside method bodies, keeping the core dependency-free.
+`GroqProvider`, `OpenRouterProvider`, `CerebrasProvider`, and `MistralProvider`
+(`providers/openai_compatible.py`) are thin `OpenAIProvider` subclasses that
+just fix the base URL, default model, and identity — all four vendors speak
+the same OpenAI chat-completions REST shape, so there's no separate
+translation layer to maintain for them.
 `ProviderRegistry` indexes providers by name and tier and answers the router's
 cheapest-capable queries.
 
