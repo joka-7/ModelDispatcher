@@ -63,6 +63,31 @@ result = gateway.dispatch(request, tenant)
 print(result.final_message.content)
 ```
 
+### Bring-your-own keys, and pooling more than one
+
+A caller can supply their own key for a provider instead of riding the shared
+free tier — set it in `TenantContext.metadata` under `user_key:<family>` (the
+part of the provider's `name` before the first `:`, e.g. `"openai"` for a
+provider registered as `OpenAIProvider(...)` whose `.name` is
+`"openai:gpt-4o-mini"`):
+
+```python
+tenant = TenantContext(
+    tenant_id=TenantId("user-123"),
+    quota=...,
+    metadata={"user_key:openai": "sk-...-the-users-own-key"},
+)
+```
+
+More than one key for the same provider (e.g. several personal keys pooled
+for redundancy)? Comma-separate them — the gateway tries each one in order
+before falling back to a different provider candidate, so one rate-limited or
+revoked key doesn't stall the whole request:
+
+```python
+metadata={"user_key:openai": "sk-key-one, sk-key-two, sk-key-three"}
+```
+
 To give the agent tools it can call on its own (web search, DB lookups,
 internal APIs — anything), register them on a `ToolRegistry` and pass it to
 `dispatch(..., tools=registry)`. `examples/basic_agent.py` shows a complete

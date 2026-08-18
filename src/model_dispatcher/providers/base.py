@@ -35,8 +35,20 @@ class ModelProvider(ABC):
     capabilities: ProviderCapability
 
     @abstractmethod
-    def complete(self, request: CompletionRequest) -> CompletionResponse:
+    def complete(
+        self, request: CompletionRequest, *, api_key: str | None = None
+    ) -> CompletionResponse:
         """Produce a single completion synchronously.
+
+        Args:
+            request: The completion request to serve.
+            api_key: Per-call credential override. When set, implementations
+                must use this instead of whatever key the instance was
+                constructed with — this is how
+                :class:`~model_dispatcher.fallback.handlers.ModelInvocationHandler`
+                applies a resolved tenant/user credential (or rotates through
+                several) without needing a separate provider instance per key.
+                ``None`` keeps the instance's own configured key.
 
         Implementations should translate the vendor response into a
         :class:`CompletionResponse` and let vendor exceptions propagate — the
@@ -45,7 +57,9 @@ class ModelProvider(ABC):
         ...
 
     @abstractmethod
-    async def acomplete(self, request: CompletionRequest) -> CompletionResponse:
+    async def acomplete(
+        self, request: CompletionRequest, *, api_key: str | None = None
+    ) -> CompletionResponse:
         """Async counterpart of :meth:`complete`."""
         ...
 

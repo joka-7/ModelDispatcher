@@ -2,13 +2,17 @@
 
 ``MockProvider`` implements the full :class:`ModelProvider` strategy without any
 network or credentials, so the whole gateway — routing, fallback, quota, the
-agent loop, onboarding — can be exercised deterministically. It supports two
+agent loop, onboarding — can be exercised deterministically. It supports three
 things real adapters cannot offer a test:
 
 * **Scripted replies** — a queue of assistant messages (optionally containing
   tool calls) returned turn by turn, to drive the agent loop.
 * **Failure injection** — raise a chosen :class:`ErrorClass` a fixed number of
   times before succeeding, to drive retry and fallback.
+* **Key-use recording** — every ``api_key`` a caller passed to :meth:`complete`
+  /:meth:`acomplete` is appended to :attr:`received_api_keys`, so tests can
+  assert *which* credential was actually used per attempt (e.g. to verify
+  same-provider key rotation) without needing a real HTTP mock.
 """
 
 from __future__ import annotations
@@ -75,9 +79,13 @@ class MockProvider(ModelProvider):
         self._remaining_failures = fail_times
         self._fail_with = fail_with
         self._chars_per_token = chars_per_token
+        self.received_api_keys: list[str | None] = []
 
     @override
-    def complete(self, request: CompletionRequest) -> CompletionResponse:
+    def complete(
+        self, request: CompletionRequest, *, api_key: str | None = None
+    ) -> CompletionResponse:
+        self.received_api_keys.append(api_key)
         if self._remaining_failures > 0:
             self._remaining_failures -= 1
             raise MockError(self._fail_with)
@@ -100,9 +108,11 @@ class MockProvider(ModelProvider):
         )
 
     @override
-    async def acomplete(self, request: CompletionRequest) -> CompletionResponse:
+    async def acomplete(
+        self, request: CompletionRequest, *, api_key: str | None = None
+    ) -> CompletionResponse:
         # The mock does no real I/O, so the async path simply mirrors the sync one.
-        return self.complete(request)
+        return self.complete(request, api_key=api_key)
 
     @override
     def estimate_tokens(self, request: CompletionRequest) -> int:

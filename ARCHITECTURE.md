@@ -125,10 +125,15 @@ dropped in later without touching callers.
 `PerimeterValidator.validate` is the single choke point for untrusted inbound
 requests: tenant authN, payload-size caps, egress provider allowlist, and
 structural/injection sanity checks — failing fast with `PerimeterViolation`
-(403). `CredentialResolver.resolve` implements the precedence chain
-**user key → tenant key → global app key → free tier**, which is the mechanical
-basis of onboarding Stage 1. `SecretRedactor` scrubs secrets/PII from anything
-bound for logs or metrics.
+(403). `CredentialResolver.resolve_candidates` implements the precedence chain
+**user key(s) → tenant key(s) → global app key → free tier**, which is the
+mechanical basis of onboarding Stage 1. A tenant may pool more than one key per
+provider (comma-separated in `TenantContext.metadata`); `ModelInvocationHandler`
+rotates through all of them — retrying transient failures, moving to the next
+key on rate-limit/quota/auth, and only falling back to the *next provider
+candidate* once every pooled key is exhausted. `SecretRedactor` scrubs
+secrets/PII from anything bound for logs or metrics; the raw key itself never
+appears in a `Credential`'s `repr()`, only its masked `secret_ref`.
 
 ### Onboarding — Two-stage flow (`onboarding/`)
 

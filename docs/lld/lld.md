@@ -600,20 +600,33 @@ class CredentialSource(StrEnum): USER, TENANT, GLOBAL_APP, FREE_TIER
 class Credential:
     provider_name: str
     source: CredentialSource
-    secret_ref: str                # masked; never the raw key
-    is_rate_limited: bool = False   # True for the shared global key
+    secret_ref: str                          # masked; safe to log
+    raw_key: str | None = field(repr=False)   # actual secret; never in repr()
+    is_rate_limited: bool = False             # True for the shared global key
 
 class CredentialResolver:
     def resolve(self, tenant, provider) -> Credential
+        # = resolve_candidates(tenant, provider)[0]
+    def resolve_candidates(self, tenant, provider) -> list[Credential]
 ```
 
-Precedence (first match wins), keyed by provider **family** = `provider.name.split(":")[0]`:
+Precedence (first *match* wins — the whole match, not one key at a time), keyed by
+provider **family** = `provider.name.split(":")[0]`:
 
-1. `metadata["user_key:<family>"]` → `USER`.
-2. `metadata["tenant_key:<family>"]` → `TENANT`.
-3. `provider.tier is FREE` → `FREE_TIER` (keyless).
-4. `tenant.is_zero_setup` → `GLOBAL_APP` (`is_rate_limited=True`) — basis of Stage 1.
+1. `metadata["user_key:<family>"]` → one `Credential` per comma-separated key, source
+   `USER`, in list order. A single key with no comma is a one-element list — existing
+   single-key tenants are unaffected.
+2. `metadata["tenant_key:<family>"]` → same splitting, source `TENANT`.
+3. `provider.tier is FREE` → one keyless `FREE_TIER` credential.
+4. `tenant.is_zero_setup` → one `GLOBAL_APP` credential (`is_rate_limited=True`) —
+   basis of Stage 1.
 5. Otherwise → raise `AuthenticationError` (401).
+
+`ModelInvocationHandler` consumes the full candidate list: it tries each credential's
+`raw_key` in order (passed as `ModelProvider.complete(request, api_key=...)`), retrying
+transient failures on the *same* key, moving to the *next pooled key* on rate-limit/
+quota/auth, and only returning `FALLBACK` to the next provider candidate once every
+pooled key is exhausted.
 
 `_mask(secret)` returns `"****" + secret[-4:]` (or `"****"` for short strings).
 
