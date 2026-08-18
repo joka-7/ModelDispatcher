@@ -27,6 +27,12 @@ from model_dispatcher import (
 )
 from model_dispatcher.providers.anthropic_provider import AnthropicProvider
 from model_dispatcher.providers.gemini_provider import GeminiProvider
+from model_dispatcher.providers.openai_compatible import (
+    CerebrasProvider,
+    GroqProvider,
+    MistralProvider,
+    OpenRouterProvider,
+)
 from model_dispatcher.providers.openai_provider import OpenAIProvider
 
 
@@ -236,3 +242,50 @@ def test_openai_classify_error_maps_auth() -> None:
     from model_dispatcher.types import ErrorClass
 
     assert provider.classify_error(exc) is ErrorClass.AUTH
+
+
+# -- OpenAI-compatible adapters (Groq/OpenRouter/Cerebras/Mistral) -------- #
+#
+# Each is a thin OpenAIProvider subclass fixing base_url/default model/name;
+# the translation logic itself is already covered by the openai_* tests
+# above, so these just confirm the subclass wiring (identity, base_url,
+# tier default) is correct and that they reuse OpenAIProvider's methods
+# unchanged.
+
+
+@pytest.mark.parametrize(
+    ("cls", "prefix", "expected_base_url"),
+    [
+        (GroqProvider, "groq", "https://api.groq.com/openai/v1"),
+        (OpenRouterProvider, "openrouter", "https://openrouter.ai/api/v1"),
+        (CerebrasProvider, "cerebras", "https://api.cerebras.ai/v1"),
+        (MistralProvider, "mistral", "https://api.mistral.ai/v1"),
+    ],
+)
+def test_openai_compatible_subclass_identity_and_base_url(
+    cls: type[OpenAIProvider], prefix: str, expected_base_url: str
+) -> None:
+    provider = cls(model="custom-model")
+    assert provider.name == f"{prefix}:custom-model"
+    assert provider._base_url == expected_base_url
+    assert provider._model == "custom-model"
+
+
+@pytest.mark.parametrize(
+    "cls", [GroqProvider, OpenRouterProvider, CerebrasProvider, MistralProvider]
+)
+def test_openai_compatible_defaults_to_cheap_tier(cls: type[OpenAIProvider]) -> None:
+    from model_dispatcher.types import ModelTier
+
+    assert cls().tier is ModelTier.CHEAP
+
+
+@pytest.mark.parametrize(
+    "cls", [GroqProvider, OpenRouterProvider, CerebrasProvider, MistralProvider]
+)
+def test_openai_compatible_reuses_openai_translation(cls: type[OpenAIProvider]) -> None:
+    """Confirm the subclass didn't shadow any of the inherited translation."""
+    provider = cls()
+    kwargs = provider._build_kwargs(_request())
+    assert kwargs["model"] == provider._model
+    assert kwargs["messages"][0]["role"] == "system"

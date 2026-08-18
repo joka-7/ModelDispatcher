@@ -38,6 +38,12 @@ from model_dispatcher.providers import OpenAIProvider  # or Anthropic/Gemini/Moc
 # 1. Register the provider(s) you have keys for.
 providers = ProviderRegistry()
 providers.register(OpenAIProvider(api_key="sk-..."))
+# Groq / OpenRouter / Cerebras / Mistral also register the same way, e.g.:
+#   from model_dispatcher.providers import GroqProvider
+#   providers.register(GroqProvider(api_key="gsk_..."))
+# All four are OpenAIProvider subclasses under the hood (they speak the same
+# OpenAI-compatible REST shape at their own base_url), so no extra vendor SDK
+# is needed beyond model-dispatcher[openai].
 
 # 2. Build the gateway ONCE at process startup; reuse it for every request.
 gateway = ModelGateway.create(providers)

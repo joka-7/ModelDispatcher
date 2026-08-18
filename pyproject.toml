@@ -26,6 +26,10 @@ dependencies = []
 openai = ["openai>=1.40"]
 anthropic = ["anthropic>=0.34"]
 gemini = ["google-genai>=1.0"]
+# Groq/OpenRouter/Cerebras/Mistral (providers/openai_compatible.py) all speak
+# the OpenAI chat-completions REST shape and are adapters over the `openai`
+# SDK with a different base_url — no separate vendor package, `[openai]`
+# already covers them.
 dev = [
     "ruff>=0.6",
     "mypy>=1.11",

@@ -7,6 +7,12 @@ from .base import ModelProvider
 from .gemini_provider import GeminiProvider
 from .local_provider import LocalProvider
 from .mock_provider import MockError, MockProvider
+from .openai_compatible import (
+    CerebrasProvider,
+    GroqProvider,
+    MistralProvider,
+    OpenRouterProvider,
+)
 from .openai_provider import OpenAIProvider
 from .registry import ProviderRegistry
 
@@ -16,6 +22,10 @@ __all__ = [
     "OpenAIProvider",
     "AnthropicProvider",
     "GeminiProvider",
+    "GroqProvider",
+    "OpenRouterProvider",
+    "CerebrasProvider",
+    "MistralProvider",
     "LocalProvider",
     "MockProvider",
     "MockError",

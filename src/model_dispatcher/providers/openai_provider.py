@@ -4,6 +4,13 @@ Adapter for OpenAI chat models built on the official ``openai`` SDK (an optional
 extra, imported lazily inside method bodies so importing the core package never
 requires the vendor dependency). Vendor exceptions are normalised into the shared
 :class:`ErrorClass` taxonomy so the fallback chain never imports from ``openai``.
+
+The ``base_url`` constructor argument is also what makes this the base class for
+every *OpenAI-compatible* vendor (Groq, OpenRouter, Cerebras, Mistral — see
+:mod:`.openai_compatible`): the ``openai`` SDK talks the same request/response
+shape to any endpoint that implements the same chat-completions contract, so
+those adapters are thin subclasses that only fix the URL, default model, and
+identity rather than reimplementing translation.
 """
 
 from __future__ import annotations
@@ -39,8 +46,23 @@ class OpenAIProvider(ModelProvider):
         model: str,
         tier: ModelTier = ModelTier.STANDARD,
         api_key: str | None = None,
+        base_url: str | None = None,
+        name: str | None = None,
     ) -> None:
-        self.name = f"openai:{model}"
+        """Configure the adapter.
+
+        Args:
+            model: Vendor model identifier.
+            tier: Cost tier this provider occupies.
+            api_key: Vendor API key; ``None`` defers to the SDK's own env-var
+                lookup (``OPENAI_API_KEY`` when ``base_url`` is unset).
+            base_url: Override the API endpoint. ``None`` targets the real
+                OpenAI API; an OpenAI-compatible vendor endpoint (see
+                :mod:`.openai_compatible`) works unchanged otherwise.
+            name: Registry identity. Defaults to ``f"openai:{model}"``;
+                subclasses pointed at another vendor should pass their own.
+        """
+        self.name = name or f"openai:{model}"
         self.tier = tier
         self.capabilities = (
             ProviderCapability.TOOLS
@@ -49,13 +71,14 @@ class OpenAIProvider(ModelProvider):
         )
         self._model = model
         self._api_key = api_key
+        self._base_url = base_url
         self._counter = TokenCounter()
 
     @override
     def complete(self, request: CompletionRequest) -> CompletionResponse:
         import openai
 
-        client = openai.OpenAI(api_key=self._api_key)
+        client = openai.OpenAI(api_key=self._api_key, base_url=self._base_url)
         response = client.chat.completions.create(**self._build_kwargs(request))
         return self._to_response(response)
 
@@ -63,7 +86,7 @@ class OpenAIProvider(ModelProvider):
     async def acomplete(self, request: CompletionRequest) -> CompletionResponse:
         import openai
 
-        client = openai.AsyncOpenAI(api_key=self._api_key)
+        client = openai.AsyncOpenAI(api_key=self._api_key, base_url=self._base_url)
         response = await client.chat.completions.create(**self._build_kwargs(request))
         return self._to_response(response)
 
