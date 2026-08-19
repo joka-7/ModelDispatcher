@@ -93,6 +93,35 @@ jobs:
         working-directory: clients/typescript
         run: npm run build
 
+  browser_agent:
+    name: Browser agent — type-check, test & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: clients/browser-agent/package-lock.json
+
+      - name: Install dependencies
+        working-directory: clients/browser-agent
+        run: npm ci
+
+      - name: Type-check
+        working-directory: clients/browser-agent
+        run: npm run typecheck
+
+      - name: Test
+        working-directory: clients/browser-agent
+        run: npm test
+
+      - name: Build
+        working-directory: clients/browser-agent
+        run: npm run build
+
   vercel_template_frontend:
     name: Vercel template — build Next.js frontend
     runs-on: ubuntu-latest

@@ -40,7 +40,15 @@ pip install "model-dispatcher[openai] @ git+https://github.com/joka-7/ModelDispa
 ```
 
 The TypeScript client (`@joka-7/modeldispatcher-client`) is published to
-GitHub Packages — see [`clients/typescript`](./clients/typescript).
+GitHub Packages — see [`clients/typescript`](./clients/typescript). It talks to
+*your own backend*, which is what runs the Python gateway above.
+
+For an app with **no backend at all** — a pure browser app doing
+bring-your-own-key calls straight to a provider — see
+[`clients/browser-agent`](./clients/browser-agent)
+(`@joka-7/modeldispatcher-browser-agent`) instead: the same multi-provider
+idea (Gemini/OpenAI/Anthropic/Groq/Ollama), running client-side with no
+server and no vendor SDK required.
 
 ## Quickstart
 

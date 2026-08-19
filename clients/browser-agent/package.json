@@ -1,0 +1,43 @@
+{
+  "name": "@joka-7/modeldispatcher-browser-agent",
+  "version": "0.3.0",
+  "description": "Browser-native, bring-your-own-key AI agent core: multi-provider (Gemini/OpenAI/Anthropic/Groq/Ollama), streaming and non-streaming, no backend and no vendor SDK required. The client-side sibling to model-dispatcher for apps with no server to run it on.",
+  "license": "MIT",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "module": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "llm",
+    "ai-agent",
+    "browser",
+    "gemini",
+    "openai",
+    "anthropic",
+    "groq",
+    "ollama",
+    "streaming"
+  ],
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}
