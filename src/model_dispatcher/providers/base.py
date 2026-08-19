@@ -17,6 +17,7 @@ from ..types import (
     ModelTier,
     ProviderCapability,
 )
+from .retry_hints import extract_retry_after_seconds
 
 __all__ = ["ModelProvider"]
 
@@ -80,3 +81,22 @@ class ModelProvider(ABC):
         "out of quota", and "transient network blip" uniformly across providers.
         """
         ...
+
+    def retry_after_seconds(self, exc: Exception) -> float | None:
+        """Best-effort "how long until this provider will accept another call".
+
+        Only ever consulted for a :class:`ErrorClass.RATE_LIMIT` failure with
+        no fallback candidate left (see
+        :class:`~model_dispatcher.fallback.handlers.ModelInvocationHandler`) —
+        the one situation where waiting is strictly better than failing
+        immediately. The default implementation is generic and provider-
+        agnostic (works for every vendor without per-provider code): it tries
+        the exception's HTTP ``Retry-After`` response header first, then
+        falls back to parsing a hint out of the exception's own message text
+        (covers Anthropic/Groq-style "try again in 48m55s" messages that
+        aren't in a header at all). Returns ``None`` when no hint can be
+        found — callers fall back to plain exponential backoff in that case.
+        Override this only if a provider needs something more precise than
+        the generic extraction.
+        """
+        return extract_retry_after_seconds(exc)

@@ -8,12 +8,15 @@ import pytest
 
 from model_dispatcher import (
     CompletionRequest,
+    CompletionResponse,
     ErrorClass,
     Message,
     ModelGateway,
     ModelTier,
+    ProviderCapability,
     Role,
     TenantContext,
+    Usage,
 )
 from model_dispatcher.exceptions import AllProvidersExhausted, AuthenticationError
 from model_dispatcher.fallback.conditions import (
@@ -21,7 +24,47 @@ from model_dispatcher.fallback.conditions import (
     is_retryable,
     is_terminal,
 )
-from model_dispatcher.providers import MockProvider
+from model_dispatcher.providers import MockProvider, ModelProvider
+
+
+class _RateLimitedOnceProvider(ModelProvider):
+    """Test double: fails once with a rate-limit error whose message carries
+    a "retry after" hint, then succeeds. Used to exercise
+    ModelInvocationHandler's last-resort rate-limit wait-and-retry path,
+    which MockProvider's fixed-message MockError can't (its message never
+    varies, so it can't carry an injectable hint)."""
+
+    def __init__(self, name: str, hint_message: str, reply: str = "recovered") -> None:
+        self.name = name
+        self.tier = ModelTier.FREE
+        self.capabilities = ProviderCapability.NONE
+        self._hint_message = hint_message
+        self._reply = reply
+        self._failed = False
+
+    def complete(
+        self, request: CompletionRequest, *, api_key: str | None = None
+    ) -> CompletionResponse:
+        if not self._failed:
+            self._failed = True
+            raise RuntimeError(self._hint_message)
+        return CompletionResponse(
+            message=Message(role=Role.ASSISTANT, content=self._reply),
+            usage=Usage(),
+            provider_name=self.name,
+            tier=self.tier,
+        )
+
+    async def acomplete(
+        self, request: CompletionRequest, *, api_key: str | None = None
+    ) -> CompletionResponse:
+        return self.complete(request, api_key=api_key)
+
+    def estimate_tokens(self, request: CompletionRequest) -> int:
+        return 1
+
+    def classify_error(self, exc: Exception) -> ErrorClass:
+        return ErrorClass.RATE_LIMIT
 
 
 def _request(tenant: TenantContext) -> CompletionRequest:
@@ -159,6 +202,116 @@ def test_auth_failure_stops_the_dispatch_once_no_pooled_keys_remain(
 
     with pytest.raises(AuthenticationError):
         gateway.dispatch(_request(tenant), tenant)
+
+
+# -- Last-resort rate-limit wait (no pooled key, no fallback provider left) #
+
+
+def test_rate_limit_with_no_fallback_waits_on_hint_then_succeeds(
+    make_gateway: Callable[..., ModelGateway],
+    make_tenant: Callable[..., TenantContext],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from model_dispatcher.fallback import handlers as handlers_module
+
+    slept: list[float] = []
+    monkeypatch.setattr(handlers_module.time, "sleep", slept.append)
+
+    # Single provider, no pooled keys — genuinely nowhere better to go, so a
+    # rate limit should be waited out rather than failing immediately.
+    provider = _RateLimitedOnceProvider("mock:only", "Please try again in 0.01s")
+    gateway = make_gateway(provider)
+    tenant = make_tenant()
+
+    result = gateway.dispatch(_request(tenant), tenant)
+
+    assert result.final_message.content == "recovered"
+    assert [a.provider_name for a in result.steps[0].attempts] == [
+        "mock:only",
+        "mock:only",
+    ]
+    assert [a.error_class for a in result.steps[0].attempts] == [
+        ErrorClass.RATE_LIMIT,
+        None,
+    ]
+    # Waited close to the hint (+ the 1s buffer), not the default 2s transient cap.
+    assert slept == [1.01]
+
+
+async def test_rate_limit_with_no_fallback_waits_on_hint_then_succeeds_async(
+    make_gateway: Callable[..., ModelGateway],
+    make_tenant: Callable[..., TenantContext],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from model_dispatcher.fallback import handlers as handlers_module
+
+    slept: list[float] = []
+
+    async def fake_sleep(seconds: float) -> None:
+        slept.append(seconds)
+
+    monkeypatch.setattr(handlers_module.asyncio, "sleep", fake_sleep)
+
+    provider = _RateLimitedOnceProvider("mock:only", "Please try again in 0.01s")
+    gateway = make_gateway(provider)
+    tenant = make_tenant()
+
+    result = await gateway.adispatch(_request(tenant), tenant)
+
+    assert result.final_message.content == "recovered"
+    assert slept == [1.01]
+
+
+def test_rate_limit_hint_past_max_wait_fails_fast_instead_of_waiting(
+    make_gateway: Callable[..., ModelGateway],
+    make_tenant: Callable[..., TenantContext],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A daily/hourly-quota-scale wait isn't worth auto-waiting for — same
+    philosophy as failing fast rather than sleeping for hours."""
+    from model_dispatcher.fallback import handlers as handlers_module
+
+    monkeypatch.setattr(
+        handlers_module.time,
+        "sleep",
+        lambda _seconds: pytest.fail("should not wait past rate_limit_max_wait"),
+    )
+
+    provider = _RateLimitedOnceProvider("mock:only", "Please try again in 1h0m0s")
+    gateway = make_gateway(provider)
+    tenant = make_tenant()
+
+    with pytest.raises(AllProvidersExhausted):
+        gateway.dispatch(_request(tenant), tenant)
+
+
+def test_rate_limit_still_fails_over_immediately_when_another_provider_exists(
+    make_gateway: Callable[..., ModelGateway],
+    make_tenant: Callable[..., TenantContext],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Unaffected by the last-resort wait: a setup with a real fallback
+    option still fails over immediately, no added latency."""
+    from model_dispatcher.fallback import handlers as handlers_module
+
+    monkeypatch.setattr(
+        handlers_module.time,
+        "sleep",
+        lambda _seconds: pytest.fail("should fail over immediately, not wait"),
+    )
+
+    provider = _RateLimitedOnceProvider("mock:free", "Please try again in 0.01s")
+    other = MockProvider("mock:cheap", tier=ModelTier.CHEAP, reply="served by cheap")
+    gateway = make_gateway(provider, other)
+    tenant = make_tenant()
+
+    result = gateway.dispatch(_request(tenant), tenant)
+
+    assert result.final_message.content == "served by cheap"
+    assert [a.provider_name for a in result.steps[0].attempts] == [
+        "mock:free",
+        "mock:cheap",
+    ]
 
 
 def test_condition_predicates_partition_error_classes() -> None:

@@ -269,7 +269,18 @@ class ModelInvocationHandler(FallbackHandler):
 
         * transient → retry the *same* credential after exponential backoff,
           up to ``max_attempts``, then move to the next credential;
-        * rate-limit / quota → move to the next credential immediately;
+        * rate-limit / quota → move to the next credential immediately —
+          *unless* there is nowhere better to go (no pooled key, no fallback
+          provider left), in which case a rate limit is instead retried
+          up to ``rate_limit_max_attempts``, waiting for the provider's own
+          "retry after" hint when it supplies one (see
+          :meth:`~model_dispatcher.providers.base.ModelProvider.
+          retry_after_seconds`) capped at ``rate_limit_max_wait`` — beyond
+          that it's a daily/hourly quota, not worth auto-waiting for, so it
+          fails fast instead. This only ever changes behaviour for a
+          request with no fallback option in the first place; a setup with
+          another key or provider to try still fails over immediately, with
+          no added latency;
         * terminal (auth/invalid/content) → ``STOP``, aborting the whole
           dispatch with a mapped exception (unchanged from single-key
           behaviour: a terminal failure is treated as the caller's problem,
@@ -288,18 +299,23 @@ class ModelInvocationHandler(FallbackHandler):
         max_attempts: int = 3,
         backoff_base: float = 0.05,
         backoff_cap: float = 2.0,
+        rate_limit_max_attempts: int = 3,
+        rate_limit_max_wait: float = 120.0,
     ) -> None:
         super().__init__()
         self._manager = manager
         self._max_attempts = max_attempts
         self._backoff_base = backoff_base
         self._backoff_cap = backoff_cap
+        self._rate_limit_max_attempts = rate_limit_max_attempts
+        self._rate_limit_max_wait = rate_limit_max_wait
 
     def handle(self, context: InvocationContext) -> HandlerOutcome:
         """Invoke the current candidate synchronously, rotating credentials."""
         provider = context.current
         if provider is None:
             return HandlerOutcome.FALLBACK
+        has_more_providers = len(context.candidates) > 1
 
         credentials: list[Credential | None] = list(context.credentials) or [None]
         for index, credential in enumerate(credentials):
@@ -319,9 +335,10 @@ class ModelInvocationHandler(FallbackHandler):
                         attempt,
                         credential,
                         has_more_credentials,
+                        has_more_providers,
                     )
                     if outcome is None:
-                        time.sleep(self._backoff_delay(attempt))
+                        time.sleep(self._backoff_delay(attempt, provider, exc))
                         continue
                     if outcome is HandlerOutcome.FALLBACK and has_more_credentials:
                         break  # this credential is done; try the next pooled key
@@ -336,6 +353,7 @@ class ModelInvocationHandler(FallbackHandler):
         provider = context.current
         if provider is None:
             return HandlerOutcome.FALLBACK
+        has_more_providers = len(context.candidates) > 1
 
         credentials: list[Credential | None] = list(context.credentials) or [None]
         for index, credential in enumerate(credentials):
@@ -357,9 +375,10 @@ class ModelInvocationHandler(FallbackHandler):
                         attempt,
                         credential,
                         has_more_credentials,
+                        has_more_providers,
                     )
                     if outcome is None:
-                        await asyncio.sleep(self._backoff_delay(attempt))
+                        await asyncio.sleep(self._backoff_delay(attempt, provider, exc))
                         continue
                     if outcome is HandlerOutcome.FALLBACK and has_more_credentials:
                         break
@@ -395,6 +414,7 @@ class ModelInvocationHandler(FallbackHandler):
         attempt: int,
         credential: Credential | None,
         has_more_credentials: bool,
+        has_more_providers: bool,
     ) -> HandlerOutcome | None:
         """Classify an error and decide the next step.
 
@@ -422,6 +442,21 @@ class ModelInvocationHandler(FallbackHandler):
 
         if is_retryable(error_class) and attempt < self._max_attempts:
             return None
+
+        # Nowhere better to fall back to: wait out a rate limit instead of
+        # failing immediately, honouring the provider's own hint when it has
+        # one. A setup with another pooled key or provider candidate is
+        # unaffected — it still fails over immediately, exactly as before.
+        if (
+            error_class is ErrorClass.RATE_LIMIT
+            and not has_more_credentials
+            and not has_more_providers
+            and attempt < self._rate_limit_max_attempts
+        ):
+            hint = provider.retry_after_seconds(exc)
+            if hint is None or hint <= self._rate_limit_max_wait:
+                return None
+
         if is_fallback_worthy(error_class) or is_retryable(error_class):
             return HandlerOutcome.FALLBACK
         if error_class is ErrorClass.AUTH and has_more_credentials:
@@ -430,8 +465,26 @@ class ModelInvocationHandler(FallbackHandler):
         context.error = self._terminal_error(provider.name, error_class, exc)
         return HandlerOutcome.STOP
 
-    def _backoff_delay(self, attempt: int) -> float:
-        """Return the exponential-backoff delay (seconds) for ``attempt``."""
+    def _backoff_delay(
+        self,
+        attempt: int,
+        provider: ModelProvider | None = None,
+        exc: Exception | None = None,
+    ) -> float:
+        """Return the delay (seconds) before the next retry.
+
+        Prefers the provider's own "retry after" hint for the exception that
+        just failed (see :meth:`~model_dispatcher.providers.base.
+        ModelProvider.retry_after_seconds`) — capped at ``rate_limit_max_wait``
+        and given a 1s buffer past the hint, same rationale as the cap itself:
+        respect what the provider actually asked for rather than guessing.
+        Falls back to plain exponential backoff when there's no hint (the
+        common case — most failures, e.g. a transient blip, don't carry one).
+        """
+        if provider is not None and exc is not None:
+            hint = provider.retry_after_seconds(exc)
+            if hint is not None:
+                return min(hint + 1.0, self._rate_limit_max_wait)
         return min(self._backoff_base * (2.0 ** (attempt - 1)), self._backoff_cap)
 
     @staticmethod
