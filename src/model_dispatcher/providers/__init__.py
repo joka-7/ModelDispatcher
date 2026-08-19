@@ -15,6 +15,7 @@ from .openai_compatible import (
 )
 from .openai_provider import OpenAIProvider
 from .registry import ProviderRegistry
+from .retry_hints import extract_retry_after_seconds, parse_retry_after_hint
 
 __all__ = [
     "ModelProvider",
@@ -29,4 +30,6 @@ __all__ = [
     "LocalProvider",
     "MockProvider",
     "MockError",
+    "extract_retry_after_seconds",
+    "parse_retry_after_hint",
 ]
