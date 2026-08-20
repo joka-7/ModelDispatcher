@@ -58,3 +58,22 @@ export interface StreamOptions extends RequestOptions {
    * every existing app's streaming callback shape. */
   onChunk: (fullTextSoFar: string) => void;
 }
+
+/** A free, public AI chat web product `openExternalChat` can hand a question
+ * off to — the no-API-key escape hatch, distinct from the `ProviderId`s above
+ * (which all require a BYOK credential). */
+export type ExternalChatProviderId = "chatgpt" | "claude" | "gemini" | "groq";
+
+/** Static metadata about one external chat provider. */
+export interface ExternalChatProviderInfo {
+  readonly id: ExternalChatProviderId;
+  readonly name: string;
+  /** Where `openExternalChat` sends the user when there's no known
+   * query-prefill parameter for this provider (or as the base URL the
+   * parameter is appended to). */
+  readonly homeUrl: string;
+  /** Build the deep-link URL for a given question, when this provider has a
+   * known (unofficial, reverse-engineered) prefill parameter. `null` when it
+   * doesn't — `openExternalChat` falls back to `homeUrl` plus the clipboard. */
+  readonly buildUrl: ((question: string) => string) | null;
+}
