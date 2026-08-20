@@ -10,13 +10,13 @@ protocol.
 from __future__ import annotations
 
 import time
-from typing import Protocol, runtime_checkable
+from typing import Protocol, TypeAlias, runtime_checkable
 
 from ..types import TenantId
 
 __all__ = ["WindowKey", "WINDOW_SECONDS", "QuotaStore", "InMemoryQuotaStore"]
 
-type WindowKey = str
+WindowKey: TypeAlias = str
 """Identifies a (tenant, window) counter bucket, e.g. ``"tokens_per_min"``."""
 
 # Duration of each named rolling window, in seconds. Fixed, tumbling windows are

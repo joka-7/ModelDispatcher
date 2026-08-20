@@ -10,12 +10,13 @@ learned classifier later.
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import TypeAlias
 
 from ..types import CompletionRequest, TaskComplexity
 
 __all__ = ["ComplexityScorer", "TaskTriage"]
 
-type ComplexityScorer = Callable[[CompletionRequest], TaskComplexity]
+ComplexityScorer: TypeAlias = Callable[[CompletionRequest], TaskComplexity]
 """Pluggable strategy mapping a request to a complexity verdict."""
 
 # Lower-cased substrings that signal genuine reasoning/agentic work.
