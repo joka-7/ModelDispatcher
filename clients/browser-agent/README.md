@@ -47,6 +47,35 @@ await streamChat(cfg, uiMessages, {
 where to get a key) for rendering a settings picker — the same shape every
 app's `APIKeySettings`/`Settings` screen already builds by hand.
 
+## No-API-key escape hatch: `openExternalChat`
+
+For a user with no API key configured (or who just doesn't want to set one
+up), `openExternalChat` hands their question off to a free, public AI chat
+product instead — ChatGPT, Claude, Gemini (via Google Search's AI Mode), or
+Groq — opening it in a new tab with the question pre-filled where the
+product supports that, and always copying the question to the clipboard too
+as a fallback:
+
+```ts
+import { openExternalChat, EXTERNAL_CHAT_PROVIDERS } from "@joka-7/modeldispatcher-browser-agent";
+
+const result = await openExternalChat("claude", "Summarise this in one sentence: ...");
+// result.prefilled        — true if the question actually made it into the URL
+// result.copiedToClipboard — true if it's also on the clipboard, for pasting
+```
+
+`EXTERNAL_CHAT_PROVIDERS` lists the four supported products for rendering a
+picker, the same way `PROVIDERS` does for the BYOK providers above.
+
+**Why this needs a clipboard fallback at all:** the URL query parameters that
+pre-fill a provider's chat box (`claude.ai/new?q=...`, `chatgpt.com/?q=...`,
+Google Search's `udm=50` AI Mode) are undocumented, reverse-engineered
+conventions — not a stable API any vendor promises to keep working. Groq has
+no known one at all, so it just opens the plain homepage. `openExternalChat`
+always copies the question to the clipboard regardless, so a broken or
+removed parameter never means the user's question is lost, just that they
+paste instead of finding it already typed in.
+
 ## What's in scope, what isn't
 
 This package owns the generic "talk to a provider" plumbing: provider
@@ -65,5 +94,5 @@ npm run typecheck
 npm test
 ```
 
-All 48 tests run against mocked `fetch`/`ReadableStream` — no real network,
-no real API key needed.
+All 58 tests run against mocked `fetch`/`ReadableStream`/`window.open`/
+clipboard — no real network, no real API key needed.
