@@ -16,7 +16,9 @@ identity rather than reimplementing translation.
 from __future__ import annotations
 
 import json
-from typing import Any, override
+from typing import Any
+
+from typing_extensions import override
 
 from ..quota.tokenizer import TokenCounter
 from ..types import (

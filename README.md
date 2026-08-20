@@ -106,7 +106,7 @@ mypy --strict src
 pytest
 ```
 
-Requires Python >= 3.12.
+Requires Python >= 3.11.
 
 ## Try it in a browser
 

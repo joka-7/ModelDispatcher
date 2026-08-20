@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Flag, IntEnum, StrEnum, auto
-from typing import NewType
+from typing import NewType, TypeAlias
 
 __all__ = [
     "TenantId",
@@ -40,10 +40,10 @@ __all__ = [
 TenantId = NewType("TenantId", str)
 """Opaque per-tenant identity used to scope quotas, credentials, and metrics."""
 
-type JSONValue = (
-    None | bool | int | float | str | list[JSONValue] | dict[str, JSONValue]
+JSONValue: TypeAlias = (
+    "None | bool | int | float | str | list[JSONValue] | dict[str, JSONValue]"
 )
-"""Recursive alias describing any JSON-serialisable value (PEP 695)."""
+"""Recursive alias describing any JSON-serialisable value."""
 
 
 # --------------------------------------------------------------------------- #

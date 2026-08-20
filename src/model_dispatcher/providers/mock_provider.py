@@ -19,7 +19,8 @@ from __future__ import annotations
 
 import math
 from collections import deque
-from typing import override
+
+from typing_extensions import override
 
 from ..types import (
     CompletionRequest,

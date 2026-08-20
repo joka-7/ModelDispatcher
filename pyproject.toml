@@ -8,19 +8,23 @@ version = "0.3.0"
 description = "Resilient AI Model Gateway/Router: strategy providers, chain-of-responsibility fallback, native agent orchestration, token-aware multi-tenant quotas, and two-stage onboarding."
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 authors = [{ name = "ModelDispatcher maintainers" }]
 keywords = ["llm", "gateway", "router", "fallback", "agent", "orchestration"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Typing :: Typed",
 ]
-# Skeleton phase: the core carries no hard runtime dependencies. Concrete
-# provider adapters pull their vendor SDKs in via the optional extras below.
-dependencies = []
+# Skeleton phase: the only hard runtime dependency is the `typing_extensions`
+# backport of `@typing.override` (stdlib-only since 3.12; this package still
+# supports 3.11 — see the "Lowering the Python floor" note in ARCHITECTURE.md).
+# Concrete provider adapters pull their vendor SDKs in via the optional
+# extras below.
+dependencies = ["typing-extensions>=4.5"]
 
 [project.optional-dependencies]
 openai = ["openai>=1.40"]
@@ -42,7 +46,7 @@ packages = ["src/model_dispatcher"]
 
 [tool.ruff]
 line-length = 88
-target-version = "py312"
+target-version = "py311"
 src = ["src", "tests", "examples"]
 
 [tool.ruff.lint]
@@ -63,7 +67,7 @@ convention = "google"
 "src/model_dispatcher/exceptions.py" = ["N818"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.11"
 strict = true
 warn_unreachable = true
 mypy_path = "src"

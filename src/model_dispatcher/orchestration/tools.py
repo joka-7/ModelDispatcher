@@ -10,15 +10,16 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from typing import TypeAlias
 
 from ..types import JSONValue, ToolCall, ToolResult, ToolSpec
 
 __all__ = ["ToolHandler", "AsyncToolHandler", "Tool", "ToolRegistry", "ToolExecutor"]
 
-type ToolHandler = Callable[[dict[str, JSONValue]], str]
+ToolHandler: TypeAlias = Callable[[dict[str, JSONValue]], str]
 """Synchronous tool implementation: decoded arguments in, string content out."""
 
-type AsyncToolHandler = Callable[[dict[str, JSONValue]], Awaitable[str]]
+AsyncToolHandler: TypeAlias = Callable[[dict[str, JSONValue]], Awaitable[str]]
 """Asynchronous tool implementation."""
 
 

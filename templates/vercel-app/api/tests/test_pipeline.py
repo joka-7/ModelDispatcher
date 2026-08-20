@@ -1,6 +1,6 @@
 """Behavioural tests for the gateway wrapper's dispatch pipeline.
 
-Run on Python >= 3.12 (the library's floor) with the library installed:
+Run on Python >= 3.11 (the library's floor) with the library installed:
 
     pip install -e .            # from the repo root, installs model-dispatcher
     pytest templates/vercel-app/api/tests

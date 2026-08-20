@@ -11,11 +11,14 @@ from __future__ import annotations
 import asyncio
 import threading
 from collections.abc import Coroutine
+from typing import TypeVar
 
 __all__ = ["run_sync"]
 
+_T = TypeVar("_T")
 
-def run_sync[T](coro: Coroutine[object, object, T]) -> T:
+
+def run_sync(coro: Coroutine[object, object, _T]) -> _T:
     """Drive ``coro`` to completion from synchronous code and return its result.
 
     Algorithm:
@@ -29,7 +32,7 @@ def run_sync[T](coro: Coroutine[object, object, T]) -> T:
     except RuntimeError:
         return asyncio.run(coro)
 
-    result: list[T] = []
+    result: list[_T] = []
     error: list[BaseException] = []
 
     def _worker() -> None:

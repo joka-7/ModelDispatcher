@@ -119,7 +119,7 @@ extras you don't use add cold-start weight for nothing.
 ## Tests
 
 ```bash
-# Backend pipeline (Python >= 3.12, gateway installed):
+# Backend pipeline (Python >= 3.11, gateway installed):
 pip install -e ../..          # installs model-dispatcher from the repo root
 pytest api/tests
 

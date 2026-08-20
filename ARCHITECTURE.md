@@ -218,3 +218,29 @@ ruff check src tests && ruff format --check src tests
 mypy --strict src
 pytest
 ```
+
+## Lowering the Python floor (3.12 → 3.11)
+
+`requires-python` was originally `>=3.12`, driving the codebase to lean on
+3.12-only syntax in a few spots: PEP 695 `type` alias statements and generic
+function syntax (`def f[T](...)`), plus `typing.override` (stdlib since 3.12,
+PEP 698). None of that was load-bearing — it was just the newest available
+syntax at the time — so when a consuming app (LangShift, `>=3.10`) needed a
+lower floor to add ModelDispatcher as an optional backend without forcing its
+own users onto 3.12, the fix was to stop using syntax the floor doesn't
+support rather than raise the floor to match the syntax:
+
+- `type X = ...` → `X: TypeAlias = ...` (`typing.TypeAlias`, stdlib since
+  3.10). `JSONValue` is self-referential, so its RHS stays a quoted string —
+  the standard forward-reference form for a recursive alias pre-PEP-695;
+  mypy resolves it identically either way.
+- `def run_sync[T](...)` → an explicit module-level `_T = TypeVar("_T")`.
+- `from typing import override` → `from typing_extensions import override`
+  everywhere (works identically on every version `typing_extensions`
+  supports, not just <3.12) — the package is now the one hard runtime
+  dependency (`typing-extensions>=4.5`).
+
+`StrEnum` (added in 3.11) was kept as-is rather than also chasing a 3.10
+floor — replacing 6 enum classes to reach one more minor version wasn't worth
+it against LangShift's own CI, which already tests on 3.11. If a future
+consumer genuinely needs 3.10, that's the next thing to look at.

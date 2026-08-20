@@ -9,7 +9,9 @@ about failures without importing anything from ``anthropic``.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, override
+from typing import TYPE_CHECKING, Any
+
+from typing_extensions import override
 
 from ..quota.tokenizer import TokenCounter
 from ..types import (
