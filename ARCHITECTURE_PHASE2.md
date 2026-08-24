@@ -26,8 +26,15 @@ client. It adds the two things the demo lacks for production: a **cryptographic 
 (Firebase App Check) at the Vercel edge, and a **resilient network client** (timeouts, exponential
 backoff, structured 402/429 handling).
 
-> **Status:** architectural design. This document defines interfaces, signatures, directory layout,
-> and the request/response flow. No implementation code is written in this phase.
+> **Status:** implemented. This document is the original design proposal — interfaces, signatures,
+> directory layout, and the request/response flow — written before any of it existed. It's kept as
+> the *rationale* record; for what actually shipped, treat it as a close-but-not-exact map and go to
+> the real thing: [`clients/typescript`](./clients/typescript) (`@joka-7/modeldispatcher-client`) and
+> [`templates/vercel-app`](./templates/vercel-app) (the Next.js + Vercel Python Function reference
+> app), both with their own READMEs. Known drift from this doc: `vercel.json` no longer pins a Python
+> runtime version below (Vercel resolves it from the project settings instead), and the Python floor
+> referenced throughout is `>=3.11`, not `>=3.12` — see `ARCHITECTURE.md`'s "Lowering the Python
+> floor" note.
 
 ---
 

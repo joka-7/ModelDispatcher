@@ -7,8 +7,15 @@ cost-appropriate model, transparently fails over on rate limits, runs a native
 tool-calling loop, enforces per-tenant token quotas, validates a security
 perimeter, and drives a two-stage onboarding flow.
 
-> **Status:** architectural skeleton. Signatures, types, and docstrings are
-> complete and pass `mypy --strict`; method bodies raise `NotImplementedError`.
+> **Status:** working library. Routing, fallback, quota, the agent loop,
+> security, and onboarding all run end-to-end against real provider adapters
+> and pass `mypy --strict`, backed by a behavioral test suite and the
+> interactive `demo/`. The one exception is `providers/local_provider.py`,
+> still an unimplemented placeholder — see its own docstring. (This doc's
+> class blueprints below predate the implementation and describe the intended
+> shape; where behavior has since evolved beyond what's written here, the
+> narrower [`docs/hld/hld.md`](docs/hld/hld.md) and
+> [`docs/lld/lld.md`](docs/lld/lld.md) are kept current and win.)
 
 ## Design pillars
 
@@ -58,8 +65,10 @@ is active and a worker-thread loop when one already is.
 the key seam — each adapter maps its vendor SDK's exceptions onto the normalised
 `ErrorClass` enum (`RATE_LIMIT | QUOTA | AUTH | TRANSIENT | INVALID | CONTENT`),
 so nothing downstream ever imports a vendor exception type. Adapters
-(`OpenAIProvider`, `AnthropicProvider`, `GeminiProvider`, `LocalProvider`) import
-their SDKs lazily inside method bodies, keeping the core dependency-free.
+(`OpenAIProvider`, `AnthropicProvider`, `GeminiProvider`) import their SDKs
+lazily inside method bodies, keeping the core dependency-free. (`LocalProvider`
+is listed alongside them below as the intended fourth, but is still an
+unimplemented placeholder — see its own docstring.)
 `GroqProvider`, `OpenRouterProvider`, `CerebrasProvider`, and `MistralProvider`
 (`providers/openai_compatible.py`) are thin `OpenAIProvider` subclasses that
 just fix the base URL, default model, and identity — all four vendors speak
@@ -85,9 +94,18 @@ travels through linked `FallbackHandler`s, each returning a `HandlerOutcome`:
 1. `PerimeterHandler` — security edge check.
 2. `CredentialHandler` — resolve key via the precedence chain.
 3. `QuotaHandler` — pre-flight `reserve()`; hard breach → `QuotaExceededError`.
-4. `ModelInvocationHandler` — call the current candidate.
-5. `RateLimitHandler` — turn a provider 429/exhaustion into `FALLBACK`.
-6. `RetryHandler` — bounded backoff for `TRANSIENT`.
+4. `ModelInvocationHandler` — call the current candidate, rotating pooled
+   credentials and folding in bounded transient retry *and* rate-limit
+   failover: normally a rate limit moves straight to the next credential or
+   provider, but when there's nowhere better to go it's retried instead,
+   waiting for the provider's own "retry after" hint (capped at
+   `rate_limit_max_wait`, default 120s) rather than failing outright.
+
+`RateLimitHandler`/`RetryHandler` also exist in `fallback/handlers.py`, but as
+**optional standalone links** for compositions that want those concerns
+isolated — the default chain above folds both into step 4 instead, since they
+wrap the same network call. See `docs/lld/lld.md` §7.2 for the exact
+`_on_error` logic.
 
 `FallbackChain.execute` interprets outcomes: `CONTINUE` advances, `SUCCESS`
 returns, `FALLBACK` pops the current candidate and restarts from the head, `STOP`

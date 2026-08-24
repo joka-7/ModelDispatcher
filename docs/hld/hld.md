@@ -5,9 +5,12 @@
 > separately in [`ARCHITECTURE_PHASE2.md`](../../ARCHITECTURE_PHASE2.md) and summarised
 > at the end of this document.
 >
-> **Status:** architectural skeleton. Signatures, types, and docstrings are complete
-> and pass `mypy --strict`; several method bodies are placeholders. This HLD describes
-> the *intended* behaviour encoded by those signatures and docstrings.
+> **Status:** working library. Routing, fallback, quota, the agent loop, security, and
+> onboarding all run end-to-end against real provider adapters and pass `mypy --strict`,
+> backed by a behavioral test suite and the interactive `demo/`. The one exception is
+> `providers/local_provider.py`, still an unimplemented placeholder — see its own
+> docstring. This HLD describes the behaviour actually encoded by those signatures and
+> docstrings, not just the intent.
 
 ---
 
@@ -212,7 +215,10 @@ linked handlers, each returning a `HandlerOutcome`:
 2. `CredentialHandler` — resolve key via the precedence chain.
 3. `QuotaHandler` — pre-flight `reserve()`; hard breach → handoff or fallback.
 4. `ModelInvocationHandler` — call the current candidate; folds in bounded transient
-   retry *and* rate-limit failover.
+   retry *and* rate-limit failover. A rate limit normally moves on to the next pooled
+   credential or provider candidate immediately, but when there's nowhere better to go
+   it's retried instead, waiting for the provider's own "retry after" hint (capped at
+   120s by default) rather than failing outright — see `docs/lld/lld.md` §7.2.
 
 `FallbackChain.execute` interprets outcomes: `CONTINUE` advances, `SUCCESS` returns,
 `FALLBACK` pops the current candidate and restarts from the head, `STOP` raises. When

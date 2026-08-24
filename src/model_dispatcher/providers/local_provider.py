@@ -1,9 +1,15 @@
-"""Local / free provider strategy (skeleton).
+"""Local / free provider strategy — **placeholder, not implemented**.
 
-Backs the zero-setup onboarding stage: a locally hosted or free-tier model that
-requires no user credential. Registered at :data:`ModelTier.FREE`, it is the
-first candidate the router offers for trivial work and the safety net the
-fallback chain lands on before triggering the key wizard.
+Intended to back the zero-setup onboarding stage with a locally hosted or
+free-tier model requiring no user credential, registered at
+:data:`ModelTier.FREE` as the first candidate the router offers for trivial
+work and the safety net the fallback chain lands on before triggering the key
+wizard. None of that is built yet: every method below raises
+``NotImplementedError``. Registering a :class:`LocalProvider` today will fail
+the first time the gateway actually calls it — use
+:class:`~model_dispatcher.providers.MockProvider` for a keyless free tier in
+the meantime (see ``demo/backend/app.py`` for how the demo does exactly
+that).
 """
 
 from __future__ import annotations

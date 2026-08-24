@@ -4,9 +4,11 @@
 > and *why*; this LLD explains *how* — the concrete classes, method signatures, data
 > types, and decision logic in `src/model_dispatcher/`.
 >
-> **Status:** architectural skeleton — signatures and docstrings are complete and pass
-> `mypy --strict`; some method bodies are placeholders. All signatures below match the
-> current source.
+> **Status:** working library — routing, fallback, quota, the agent loop, security, and
+> onboarding all run end-to-end against real provider adapters and pass `mypy --strict`,
+> backed by a behavioral test suite. The one exception is `providers/local_provider.py`,
+> still an unimplemented placeholder — see its own docstring. All signatures below match
+> the current source.
 
 ---
 
@@ -206,8 +208,9 @@ class ModelProvider(ABC):
 ```
 
 - `classify_error` is the isolation seam: vendor exceptions never escape the adapter.
-- Concrete adapters (`OpenAIProvider`, `AnthropicProvider`, `GeminiProvider`,
-  `LocalProvider`) import their SDKs **lazily** inside method bodies.
+- Concrete adapters (`OpenAIProvider`, `AnthropicProvider`, `GeminiProvider`) import
+  their SDKs **lazily** inside method bodies. `LocalProvider` is still an unimplemented
+  placeholder — see its own docstring.
 
 ### 5.2 `ProviderRegistry`
 
@@ -315,7 +318,7 @@ class InvocationContext:
 
 **`QuotaHandler._on_deny`** — the onboarding branch point:
 
-```223:243:src/model_dispatcher/fallback/handlers.py
+```236:256:src/model_dispatcher/fallback/handlers.py
     def _on_deny(
         self,
         context: InvocationContext,
@@ -340,35 +343,79 @@ class InvocationContext:
 ```
 
 **`ModelInvocationHandler`** folds retry + failover into one place because they wrap the
-same network call. `_on_error` returns `None` to mean "retry after backoff", or a concrete
-outcome:
+same network call, and rotates through every pooled credential for the current provider
+before giving up on it. `_on_error` returns `None` to mean "retry the same credential after
+backoff", or a concrete outcome:
 
-```329:350:src/model_dispatcher/fallback/handlers.py
+```409:466:src/model_dispatcher/fallback/handlers.py
     def _on_error(
         self,
         context: InvocationContext,
         provider: ModelProvider,
         exc: Exception,
         attempt: int,
+        credential: Credential | None,
+        has_more_credentials: bool,
+        has_more_providers: bool,
     ) -> HandlerOutcome | None:
         """Classify an error and decide the next step.
 
-        Returns ``None`` to signal "retry the same provider after backoff", or a
-        concrete :class:`HandlerOutcome` (FALLBACK / STOP) to act on now.
+        Returns ``None`` to signal "retry the same credential after backoff",
+        or a concrete :class:`HandlerOutcome`:
+
+        * ``FALLBACK`` — this credential is done (fallback-worthy, or a
+          transient failure with retries exhausted). The caller advances to
+          the next pooled credential when ``has_more_credentials``, or to the
+          next provider candidate otherwise.
+        * ``STOP`` — a terminal failure. Normally aborts the whole dispatch,
+          *except* an auth failure with another pooled credential still
+          available: a bad key is that key's problem, not the provider's, so
+          the next key gets a chance before giving up on the provider.
         """
         error_class = provider.classify_error(exc)
-        context.attempts.append(AttemptRecord(provider.name, error_class, str(exc)))
+        context.attempts.append(
+            AttemptRecord(
+                provider.name,
+                error_class,
+                str(exc),
+                credential_ref=credential.secret_ref if credential else None,
+            )
+        )
 
         if is_retryable(error_class) and attempt < self._max_attempts:
             return None
+
+        # Nowhere better to fall back to: wait out a rate limit instead of
+        # failing immediately, honouring the provider's own hint when it has
+        # one. A setup with another pooled key or provider candidate is
+        # unaffected — it still fails over immediately, exactly as before.
+        if (
+            error_class is ErrorClass.RATE_LIMIT
+            and not has_more_credentials
+            and not has_more_providers
+            and attempt < self._rate_limit_max_attempts
+        ):
+            hint = provider.retry_after_seconds(exc)
+            if hint is None or hint <= self._rate_limit_max_wait:
+                return None
+
         if is_fallback_worthy(error_class) or is_retryable(error_class):
+            return HandlerOutcome.FALLBACK
+        if error_class is ErrorClass.AUTH and has_more_credentials:
             return HandlerOutcome.FALLBACK
 
         context.error = self._terminal_error(provider.name, error_class, exc)
         return HandlerOutcome.STOP
 ```
 
-- Backoff: `min(backoff_base * 2**(attempt-1), backoff_cap)` seconds.
+- Backoff: `min(backoff_base * 2**(attempt-1), backoff_cap)` seconds (transient retry);
+  a retried rate limit instead waits `min(hint + 1.0, rate_limit_max_wait)` seconds — the
+  provider's own "retry after" hint (`ModelProvider.retry_after_seconds`, HTTP header first
+  then message-text regex — see `providers/retry_hints.py`), or `rate_limit_max_wait`
+  itself when the provider gave no hint.
+- `rate_limit_max_attempts` (default 3) and `rate_limit_max_wait` (default 120s) are
+  `ModelInvocationHandler` constructor knobs, currently fixed at their defaults by
+  `ModelGateway._build_chain` — not yet threaded through `GatewaySettings`.
 - On success `_on_success` records the attempt, sets `context.response`, and, if a
   reservation exists, calls `manager.commit(tenant, reservation, response.usage)`.
 - Terminal mapping: `AUTH → AuthenticationError (401)`; everything else terminal →

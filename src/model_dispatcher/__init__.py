@@ -7,8 +7,12 @@ subpackages (``providers``, ``routing``, ``fallback``, ``orchestration``,
 Example:
     >>> from model_dispatcher import ModelGateway, CompletionRequest  # doctest: +SKIP
 
-This is an architectural skeleton: signatures and docstrings are complete, but
-method bodies raise :class:`NotImplementedError` until the implementation phase.
+Routing, fallback, quota, the agent loop, and onboarding all run end-to-end
+against real provider adapters (OpenAI/Anthropic/Gemini/Groq/OpenRouter/
+Cerebras/Mistral) and a keyless :class:`~model_dispatcher.providers.MockProvider`
+for offline use. The one exception is
+:class:`~model_dispatcher.providers.LocalProvider`, which is still an
+unimplemented placeholder — see its own docstring.
 """
 
 from __future__ import annotations
