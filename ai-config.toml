@@ -1,0 +1,23 @@
+# Copy this to your project root as `ai-config.toml` and edit.
+# Then run:  python .ai/bin/ai-sync
+
+[project]
+name = "modeldispatcher"
+
+[stack]
+# Only the fragments you list here get compiled into AGENTS.md.
+# Names map to files under .ai/rules/{languages,frameworks,practices}/<name>.md
+languages  = ["python"]
+practices  = ["testing", "git-commits", "security", "architecture"]
+
+[tools]
+# Which assistants to wire up. "agents" (the root AGENTS.md) is always produced.
+targets = ["claude", "cursor", "gemini", "copilot"]
+
+[options]
+# "symlink" (default) — zero drift, but dangles without the submodule initialized.
+# "copy" — real files, container/CI-safe, needs a re-run after pulling rule updates.
+link_mode = "symlink"
+local_tail = "ai-config.local.md"
+cursor_mdc = false
+claude_agents = false
