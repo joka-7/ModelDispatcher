@@ -7,9 +7,9 @@ Check attests the app instance; Firebase Auth (anonymous by default) attests the
 end user and is what makes per-tenant quota isolation real — the wrapper derives
 the tenant id from the verified `uid`, not from anything the client claims.
 
-This is the Phase 2 reference wiring described in
-[`ARCHITECTURE_PHASE2.md`](../../ARCHITECTURE_PHASE2.md). Copy the folder, set your
-env vars, and deploy.
+This is the reference wiring described in [`ARCHITECTURE.md`](../../ARCHITECTURE.md)'s
+"Client-side integration & packaging layer" section. Copy the folder, set your env vars,
+and deploy.
 
 ## Layout
 

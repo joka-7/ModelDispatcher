@@ -1,16 +1,14 @@
 # ModelDispatcher — High-Level Design (HLD)
 
-> **Scope:** the Phase-1 Python library under `src/model_dispatcher/`. The
-> client/edge integration layer (TypeScript client + Vercel template) is designed
-> separately in [`ARCHITECTURE_PHASE2.md`](../../ARCHITECTURE_PHASE2.md) and summarised
-> at the end of this document.
+> **Scope:** the Python library under `src/model_dispatcher/`. The client/edge
+> integration layer (TypeScript client + Vercel template) is covered in
+> [`ARCHITECTURE.md`](../../ARCHITECTURE.md)'s "Client-side integration &
+> packaging layer" section and summarised at the end of this document.
 >
 > **Status:** working library. Routing, fallback, quota, the agent loop, security, and
 > onboarding all run end-to-end against real provider adapters and pass `mypy --strict`,
-> backed by a behavioral test suite and the interactive `demo/`. The one exception is
-> `providers/local_provider.py`, still an unimplemented placeholder — see its own
-> docstring. This HLD describes the behaviour actually encoded by those signatures and
-> docstrings, not just the intent.
+> backed by a behavioral test suite and the interactive `demo/`. This HLD describes the
+> behaviour actually encoded by those signatures and docstrings, not just the intent.
 
 ---
 
@@ -93,7 +91,6 @@ flowchart LR
         OpenAI[OpenAIProvider]
         Anthropic[AnthropicProvider]
         Gemini[GeminiProvider]
-        Local[LocalProvider]
         Mock[MockProvider]
     end
 
@@ -399,10 +396,11 @@ copying.
 
 ---
 
-## 13. Phase 2 — client & edge integration (summary)
+## 13. Client & edge integration (summary)
 
-Phase 2 (see [`ARCHITECTURE_PHASE2.md`](../../ARCHITECTURE_PHASE2.md)) packages the library
-for any Next.js/React app on Vercel:
+See [`ARCHITECTURE.md`](../../ARCHITECTURE.md)'s "Client-side integration & packaging
+layer" section for the full design; in short, it packages the library for any Next.js/React
+app on Vercel:
 
 - a thin `api/gateway.py` **Adapter** (with a Firebase **App Check** guard clause) that
   maps `ModelDispatcherError → JSONResponse(exc.http_status, exc.to_payload())`;
@@ -412,7 +410,7 @@ for any Next.js/React app on Vercel:
 - a `useGateway` React hook that opens the `<KeyWizard/>` on the handoff event.
 
 The library returns the structured object; the web app maps it to HTTP and launches the
-key wizard. See the LLD for detailed class/method contracts of the Phase-1 core.
+key wizard. See the LLD for detailed class/method contracts of the core library.
 
 ---
 

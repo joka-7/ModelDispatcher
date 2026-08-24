@@ -6,9 +6,7 @@
 >
 > **Status:** working library — routing, fallback, quota, the agent loop, security, and
 > onboarding all run end-to-end against real provider adapters and pass `mypy --strict`,
-> backed by a behavioral test suite. The one exception is `providers/local_provider.py`,
-> still an unimplemented placeholder — see its own docstring. All signatures below match
-> the current source.
+> backed by a behavioral test suite. All signatures below match the current source.
 
 ---
 
@@ -209,8 +207,7 @@ class ModelProvider(ABC):
 
 - `classify_error` is the isolation seam: vendor exceptions never escape the adapter.
 - Concrete adapters (`OpenAIProvider`, `AnthropicProvider`, `GeminiProvider`) import
-  their SDKs **lazily** inside method bodies. `LocalProvider` is still an unimplemented
-  placeholder — see its own docstring.
+  their SDKs **lazily** inside method bodies.
 
 ### 5.2 `ProviderRegistry`
 

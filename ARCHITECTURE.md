@@ -10,12 +10,11 @@ perimeter, and drives a two-stage onboarding flow.
 > **Status:** working library. Routing, fallback, quota, the agent loop,
 > security, and onboarding all run end-to-end against real provider adapters
 > and pass `mypy --strict`, backed by a behavioral test suite and the
-> interactive `demo/`. The one exception is `providers/local_provider.py`,
-> still an unimplemented placeholder — see its own docstring. (This doc's
-> class blueprints below predate the implementation and describe the intended
-> shape; where behavior has since evolved beyond what's written here, the
-> narrower [`docs/hld/hld.md`](docs/hld/hld.md) and
-> [`docs/lld/lld.md`](docs/lld/lld.md) are kept current and win.)
+> interactive `demo/`. (This doc's class blueprints below predate the
+> implementation and describe the intended shape; where behavior has since
+> evolved beyond what's written here, the narrower
+> [`docs/hld/hld.md`](docs/hld/hld.md) and [`docs/lld/lld.md`](docs/lld/lld.md)
+> are kept current and win.)
 
 ## Design pillars
 
@@ -66,9 +65,7 @@ the key seam — each adapter maps its vendor SDK's exceptions onto the normalis
 `ErrorClass` enum (`RATE_LIMIT | QUOTA | AUTH | TRANSIENT | INVALID | CONTENT`),
 so nothing downstream ever imports a vendor exception type. Adapters
 (`OpenAIProvider`, `AnthropicProvider`, `GeminiProvider`) import their SDKs
-lazily inside method bodies, keeping the core dependency-free. (`LocalProvider`
-is listed alongside them below as the intended fourth, but is still an
-unimplemented placeholder — see its own docstring.)
+lazily inside method bodies, keeping the core dependency-free.
 `GroqProvider`, `OpenRouterProvider`, `CerebrasProvider`, and `MistralProvider`
 (`providers/openai_compatible.py`) are thin `OpenAIProvider` subclasses that
 just fix the base URL, default model, and identity — all four vendors speak
@@ -192,8 +189,7 @@ dispatch(request, tenant):
   1. PerimeterValidator.validate(request, tenant)      # 403 on edge failure
   2. complexity = TaskTriage.classify(request)         # TRIVIAL..COMPLEX
   3. candidates = ModelRouter.route(request, complexity)   # cheap → premium
-  4. chain = FallbackChain.build([Perimeter, Credential, Quota,
-                                  ModelInvocation, RateLimit, Retry])
+  4. chain = FallbackChain.build([Perimeter, Credential, Quota, ModelInvocation])
   5. result = AgentLoop.run(state, tools, chain, candidates, deadline=…)
        └─ per turn: chain.execute → (tool calls? execute + loop : return)
   6. QuotaManager.commit(tenant, result.usage)         # reconcile estimate vs real
@@ -224,6 +220,203 @@ QuotaHandler:
 - **Distributed quotas:** implement the `QuotaStore` Protocol.
 - **New fallback behaviour:** add a `FallbackHandler` and place it in the chain.
 - **Metrics backend:** implement the `MetricsSink` Protocol.
+
+## Client-side integration & packaging layer
+
+`demo/` (above) prototypes the consumption pattern in-repo: `demo/backend/app.py` maps any
+`ModelDispatcherError` to `JSONResponse(status_code=exc.http_status, content=exc.to_payload())`
+in one `except`, and `demo/frontend/src/api.ts` models the response as a `DispatchOutcome`
+discriminated union that `App.tsx` switches on to open the key wizard. This section covers
+the packaged, reusable version of that pattern — a publishable TypeScript client
+([`clients/typescript`](./clients/typescript), `@joka-7/modeldispatcher-client`) and a
+reference integration ([`templates/vercel-app`](./templates/vercel-app)) so any Next.js/React
+app on Vercel can adopt the gateway by (a) dropping a thin Python wrapper into its `/api`
+folder and (b) installing the client. It adds the two things the demo lacks for production:
+a **cryptographic request perimeter** (Firebase App Check) at the Vercel edge, and a
+**resilient network client** (timeouts, exponential backoff, structured 402/429 handling).
+
+### Distribution
+
+Both sides ship through **GitHub**, so a Vercel build needs exactly one credential (a GitHub
+token) to fetch both — no private package index to stand up.
+
+| Artifact | Channel | `requirements.txt` / `package.json` entry |
+| --- | --- | --- |
+| Python gateway library | Git URL pin | `model-dispatcher @ git+https://github.com/joka-7/ModelDispatcher@<tag>` |
+| TypeScript client | GitHub Packages | `@joka-7/modeldispatcher-client` |
+
+Both are distribution-agnostic at the call site: migrating later to a private PyPI + npm
+registry changes only the dependency spec line — nothing in the wrapper or app code.
+
+### Design patterns
+
+| Layer | Pattern | Rationale |
+| --- | --- | --- |
+| `api/gateway.py` wrapper | **Adapter** (Vercel handler → library facade) + **Guard clause** (App Check) | Thin edge; no business logic |
+| App Check verification | **Strategy** (`AppCheckVerifier` interface; real vs. dev-bypass impls) | Testable, env-swappable |
+| TS network client | **Interceptor / Chain of Responsibility** (request + response interceptors) | Cross-cutting timeout/retry/error concerns composed, not tangled |
+| TS retry | **Policy object** (`RetryPolicy`) | Backoff parameters injected, unit-testable |
+| Handoff → UI | **Observer / pub-sub** (`GatewayEventBus`) + **discriminated union** result type | Decouples "402 arrived" from "which component renders the wizard" |
+| React surface | **Custom hook** (`useGateway`) wrapping the event bus | Idiomatic; keeps components dumb |
+
+### Directory layout
+
+```
+ModelDispatcher/
+├── src/model_dispatcher/            # the gateway library (unchanged by this layer)
+├── clients/
+│   └── typescript/                  # publishable @joka-7/modeldispatcher-client
+│       ├── package.json             # name, version, exports, react as optional peerDep
+│       ├── tsconfig.json            # strict: true
+│       └── src/
+│           ├── index.ts             # public barrel
+│           ├── types.ts             # STRICT interfaces: DispatchOutcome, Handoff, GatewayError…
+│           ├── client.ts            # GatewayClient facade (create + dispatch)
+│           ├── interceptors/
+│           │   ├── interceptor.ts   # RequestInterceptor / ResponseInterceptor contracts
+│           │   ├── timeout.ts       # AbortController-based request timeout
+│           │   ├── retry.ts         # RetryPolicy + exponential backoff for 5xx
+│           │   ├── appcheck.ts      # attaches X-Firebase-AppCheck token (request side)
+│           │   └── handoff.ts       # detects 402/429 trigger_key_wizard, emits event
+│           ├── events.ts            # GatewayEventBus (Observer)
+│           └── react/
+│               └── useGateway.ts    # React hook: dispatch() + wizard state
+└── templates/
+    └── vercel-app/                  # reference wiring teams copy
+        ├── api/                     # ← Python runs here as Vercel Serverless Functions
+        │   ├── requirements.txt     # model-dispatcher @ git+…@<tag>  (+ firebase-admin)
+        │   ├── _lib/
+        │   │   ├── __init__.py
+        │   │   ├── appcheck.py      # AppCheckVerifier (Strategy) — verifies header token
+        │   │   ├── wiring.py        # build_gateway(): ProviderRegistry + ModelGateway.create()
+        │   │   └── http.py          # request parse + error→JSONResponse mapping helpers
+        │   └── gateway.py           # THIN wrapper = Vercel handler (the invoke point)
+        ├── app/ (or pages/)         # Next.js frontend
+        │   ├── lib/gateway.ts       # createGatewayClient() configured for this app
+        │   └── components/KeyWizard.tsx
+        ├── package.json             # depends on @joka-7/modeldispatcher-client + firebase
+        └── vercel.json              # function config (maxDuration); no pinned Python runtime
+```
+
+**Key placement fact:** on Vercel, any file under `/api` becomes a serverless function.
+`api/gateway.py` *is* the HTTP endpoint (`POST /api/gateway`); the `requirements.txt` in that
+folder is what Vercel's Python build installs. This is the mechanism that lets the frontend
+and the packaged Python gateway co-deploy in a single project.
+
+### Perimeter security — Firebase App Check
+
+App Check proves a request originated from *your* genuine, unmodified frontend (via
+reCAPTCHA / DeviceCheck / Play Integrity attestation) before any gateway logic runs. It lives
+in the **thin wrapper**, not the library — the library's `PerimeterValidator` handles
+tenant/size/allowlist concerns; App Check handles *client authenticity*.
+
+- `api/_lib/appcheck.py` defines `AppCheckVerifier` as a `Protocol` (`verify(token) ->
+  AppCheckClaims`, raising `AppCheckError` on failure) with a `FirebaseAppCheckVerifier`
+  implementation that verifies the `X-Firebase-AppCheck` header via
+  `firebase_admin.app_check.verify_token`.
+- `api/gateway.py` is the wrapper: an Adapter with a leading guard clause — verify the
+  header before touching the library at all; on failure, return `403 app_check_failed`
+  without ever invoking the gateway; on success, parse the body into a `CompletionRequest` +
+  `TenantContext` (the verified `uid` becomes the `TenantId`), dispatch, and map any
+  `ModelDispatcherError` via `exc.http_status`/`exc.to_payload()` — reused verbatim from
+  `demo/backend/app.py`'s one-liner.
+- The App Check token is minted **client-side** by the Firebase SDK and attached by the TS
+  `appcheck` interceptor — the developer never wires the header manually.
+- Dev/local uses a `NoopAppCheckVerifier` (Strategy swap via env) so `demo/` and tests don't
+  need Firebase.
+
+### Network resilience — TypeScript interceptor client
+
+`GatewayClient.dispatch()` runs each request through an ordered interceptor pipeline (Chain
+of Responsibility): request side `[appcheck, timeout]`, response side `[retry, handoff]` —
+retry runs first so a transient 5xx is retried before the body is ever interpreted as a
+handoff.
+
+- **timeout** — wraps each attempt in an `AbortController` firing at `timeoutMs`; abort →
+  `NetworkError`.
+- **appcheck** (request) — awaits `getToken()` from the Firebase App Check SDK; sets
+  `X-Firebase-AppCheck`.
+- **retry** (response/error) — on a status in `RetryPolicy.retryableStatuses` (`[500, 502,
+  503, 504]` — **not** 402/429), sleeps `min(maxDelay, base·2^n)` with optional jitter and
+  re-issues, up to `maxRetries`, so quota handoffs are never retried away.
+- **handoff** (response) — the pivotal one: on `!res.ok`, reads the JSON body once; if
+  `body.action` is a known handoff action (`trigger_key_wizard` / `upgrade_plan` /
+  `retry_later`) it resolves to `{ kind: "handoff", ... }` **and publishes to the event
+  bus**; otherwise `{ kind: "error", ... }`. This is where the Python `to_payload()`
+  contract gets decoded.
+
+`DispatchOutcome<T>` is the discriminated union every call resolves to: `"ok"` (result),
+`"handoff"` (402/429 with a typed `Handoff`), `"error"` (a mapped `GatewayError`), or
+`"network"` (timeout/offline/exhausted retries).
+
+### GUI handoff — event bus + React hook
+
+Goal: any component, anywhere in the tree, learns "render the key wizard now" without
+prop-drilling the outcome from the dispatch call site.
+
+1. **Decode** (the `handoff` interceptor) — on a non-OK response with a known `action`,
+   build a typed `Handoff`, `eventBus.emit("handoff", { status, handoff })`, and resolve
+   `dispatch()`'s own return value to `{ kind: "handoff", ... }`.
+2. **Subscribe** (`useGateway` hook) — bridges the bus into React state: a `wizard` value
+   set from the `"handoff"` event when its action is `trigger_key_wizard`, plus
+   `dismissWizard()`.
+3. **Render** (component) — `const { dispatch, wizard, dismissWizard } = useGateway();` then
+   `{ wizard && <KeyWizard provider={wizard.provider} onClose={dismissWizard} /> }` —
+   declarative, no HTTP knowledge.
+
+Why an event bus rather than only a return value (the in-repo `demo/frontend` just lifts
+state in `App.tsx`): in a real multi-page app, a 402 can surface from a background refresh
+or a component far from the dispatch button. The bus lets a single top-level
+`<KeyWizardHost/>` subscribe once and render the wizard regardless of which call triggered
+it — while `dispatch()` **also** still returns the typed `DispatchOutcome` for call-site
+handling. Both paths, one decode.
+
+### Request/response cycle
+
+```
+[React component]
+   │  useGateway().dispatch(prompt)
+   ▼
+[GatewayClient] request interceptors:
+   appcheck → attaches X-Firebase-AppCheck (Firebase SDK getToken)
+   timeout  → arms AbortController(timeoutMs)
+   │  POST /api/gateway   { messages, … }
+   ▼
+──────────────── Vercel edge (same project) ────────────────
+[api/gateway.py  (thin Adapter)]
+   ① AppCheckVerifier.verify(header)  ──fail──▶ 403 app_check_failed  (library NOT invoked)
+   ② parse → CompletionRequest, uid → TenantContext
+   ③ ModelGateway.dispatch(req, tenant)      ← the packaged gateway library
+        perimeter → triage → route → fallback chain → agent loop → quota commit
+   ④ on ModelDispatcherError → JSONResponse(exc.http_status, exc.to_payload())
+        e.g. QuotaExceededError → 402/429  { action: "trigger_key_wizard", provider, … }
+   ⑤ success → 200 { final, steps, usage, … }
+────────────────────────────────────────────────────────────
+   ▼
+[GatewayClient] response interceptors:
+   retry   → 5xx? backoff + jitter, re-issue (≤ maxRetries).  402/429 pass through untouched.
+   handoff → body.action known? → emit("handoff") + { kind: "handoff" }
+   │
+   ▼
+[useGateway]  bus → setWizard(...)          [dispatch() caller] receives DispatchOutcome
+   ▼
+[<KeyWizardHost/>] renders <KeyWizard provider=… />
+```
+
+### Validation strategy
+
+1. **TS client unit tests** (vitest) with a mocked `fetch`: 500 × 3 → one success after
+   backoff; a 402 body `{action: "trigger_key_wizard"}` → `{kind: "handoff"}` **and** the
+   event bus fires; timeout → `{kind: "network"}`; 402/429 are **not** retried.
+2. **Wrapper unit tests** (pytest): missing/invalid App Check header → 403 and the gateway
+   is never called (spy); a stubbed `QuotaExceededError` → 402/429 with the exact
+   `trigger_key_wizard` payload.
+3. **Template smoke run**: `vercel dev` on `templates/vercel-app/` with
+   `NoopAppCheckVerifier`; dispatch until the free quota trips and confirm `<KeyWizard/>`
+   mounts — the same behaviour as `demo/`, but through the packaged client and the
+   `/api/gateway.py` path.
+4. **Repo gates stay green**: `ruff check`, `mypy --strict src`, `pytest`, plus `tsc
+   --noEmit` for the client.
 
 ## Quality bar
 
