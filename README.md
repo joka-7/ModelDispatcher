@@ -95,7 +95,37 @@ consuming repos.
 ## Layout
 
 See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the directory layout, class
-blueprints, and algorithmic flows.
+blueprints, and algorithmic flows, and [`docs/hld/hld.md`](docs/hld/hld.md) /
+[`docs/lld/lld.md`](docs/lld/lld.md) for the design docs that stay current
+when behavior evolves past what's written there.
+
+<!-- BEGIN GENERATED TREE (depth=1 entries=all) -->
+```text
+modeldispatcher/
+├── .github/
+├── clients/         # Non-Python integration layers, documented in ARCHITECTURE.md's…
+├── demo/            # Interactive end-to-end demo of the gateway
+├── docs/
+├── examples/
+├── src/
+├── templates/
+├── tests/           # Behavioral test suite (routing, fallback, quota, agent loop, security,…
+├── .dockerignore
+├── .gitignore
+├── ARCHITECTURE.md  # ModelDispatcher — Architecture
+├── Dockerfile
+├── LICENSE
+├── README.md        # ModelDispatcher
+└── pyproject.toml
+```
+<!-- END GENERATED TREE -->
+
+Full annotated tree, every file: [`docs/STRUCTURE.md`](docs/STRUCTURE.md). Generated —
+regenerate after adding/renaming a file with:
+```bash
+python <ogen-ai>/skills/repo_tree/gen_tree.py --project . --output docs/STRUCTURE.md
+python <ogen-ai>/skills/repo_tree/gen_tree.py --project . --output README.md --max-depth 1
+```
 
 ## Development
 

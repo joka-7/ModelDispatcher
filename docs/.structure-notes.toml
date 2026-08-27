@@ -1,0 +1,34 @@
+# Hand-written notes for docs/STRUCTURE.md's generated tree.
+# .py files already carry real module docstrings gen_tree.py derives
+# automatically; subpackage READMEs give directory notes automatically too.
+# These entries carry forward ARCHITECTURE.md's "Directory layout" section
+# (which only covers src/model_dispatcher/) and cover the top-level dirs
+# that section doesn't reach.
+
+[notes]
+"src/model_dispatcher/providers" = "STRATEGY — ModelProvider + registry + concrete adapters"
+"src/model_dispatcher/routing" = "TRIAGE — TaskTriage (complexity) + ModelRouter (candidate order)"
+"src/model_dispatcher/fallback" = "CHAIN OF RESPONSIBILITY — handlers + chain executor + conditions"
+"src/model_dispatcher/orchestration" = "NATIVE LOOP — AgentLoop, ConversationState, tools, results"
+"src/model_dispatcher/quota" = "TOKEN QUOTAS — manager, tenant, tokenizer, store (in-memory)"
+"src/model_dispatcher/security" = "PERIMETER — validator, credential resolver, redaction"
+"src/model_dispatcher/onboarding" = "TWO-STAGE — resolver + KeyWizardHandoff payload"
+"src/model_dispatcher/observability" = "Redaction-aware logging + vendor-neutral metrics"
+"src/model_dispatcher/py.typed" = "PEP 561 marker — this package ships inline type hints"
+
+"clients" = "Non-Python integration layers, documented in ARCHITECTURE.md's packaging-layer section"
+"clients/browser-agent" = "Browser-native TypeScript client (no server) — see its own README.md"
+"clients/typescript" = "Node/server TypeScript client — see its own README.md"
+
+"demo" = "Interactive end-to-end demo of the gateway"
+"demo/backend" = "FastAPI app wrapping ModelGateway"
+"demo/frontend" = "Vite/React UI driving the demo backend"
+
+"templates/vercel-app" = "Starter template: a Vercel app pre-wired to ModelGateway"
+"templates/vercel-app/FIREBASE_APPCHECK_SETUP.md" = "Firebase App Check setup for the template"
+
+"examples/basic_agent.py" = "Minimal end-to-end usage example"
+"tests" = "Behavioral test suite (routing, fallback, quota, agent loop, security, onboarding)"
+"docs/hld" = "High-Level Design — kept current, narrower and wins over ARCHITECTURE.md where they diverge"
+"docs/lld" = "Low-Level Design — kept current, narrower and wins over ARCHITECTURE.md where they diverge"
+"docs/USAGE.md" = "Usage guide"
