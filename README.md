@@ -101,7 +101,7 @@ when behavior evolves past what's written there.
 
 <!-- BEGIN GENERATED TREE (depth=1 entries=all) -->
 ```text
-modeldispatcher/
+ModelDispatcher/
 ├── .github/
 ├── clients/         # Non-Python integration layers, documented in ARCHITECTURE.md's…
 ├── demo/            # Interactive end-to-end demo of the gateway
@@ -110,12 +110,19 @@ modeldispatcher/
 ├── src/
 ├── templates/
 ├── tests/           # Behavioral test suite (routing, fallback, quota, agent loop, security,…
+├── .ai              # Ogen-ai submodule — the shared source of rules, skills and the ai-sync…
 ├── .dockerignore
 ├── .gitignore
+├── .gitleaksignore
+├── .gitmodules
+├── AGENTS.md        # The compiled coding rules every AI assistant reads — generated, do not…
 ├── ARCHITECTURE.md  # ModelDispatcher — Architecture
+├── CLAUDE.md        # Claude Code's copy of AGENTS.md (generated)
 ├── Dockerfile
+├── GEMINI.md        # Gemini CLI's copy of AGENTS.md (generated)
 ├── LICENSE
 ├── README.md        # ModelDispatcher
+├── ai-config.toml   # Which rule fragments and target tools ai-sync compiles for this repo
 └── pyproject.toml
 ```
 <!-- END GENERATED TREE -->
@@ -123,8 +130,8 @@ modeldispatcher/
 Full annotated tree, every file: [`docs/STRUCTURE.md`](docs/STRUCTURE.md). Generated —
 regenerate after adding/renaming a file with:
 ```bash
-python <ogen-ai>/skills/repo_tree/gen_tree.py --project . --output docs/STRUCTURE.md
-python <ogen-ai>/skills/repo_tree/gen_tree.py --project . --output README.md --max-depth 1
+python .ai/skills/repo_tree/gen_tree.py --project . --output docs/STRUCTURE.md
+python .ai/skills/repo_tree/gen_tree.py --project . --output README.md --max-depth 1
 ```
 
 ## Development
