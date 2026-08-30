@@ -1,6 +1,6 @@
 # ModelDispatcher — Low-Level Design (LLD)
 
-> Companion to [`docs/hld/hld.md`](../hld/hld.md). The HLD explains *what* the system does
+> Companion to [`docs/HLD.md`](./HLD.md). The HLD explains *what* the system does
 > and *why*; this LLD explains *how* — the concrete classes, method signatures, data
 > types, and decision logic in `src/model_dispatcher/`.
 >

@@ -95,8 +95,8 @@ consuming repos.
 ## Layout
 
 See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the directory layout, class
-blueprints, and algorithmic flows, and [`docs/hld/hld.md`](docs/hld/hld.md) /
-[`docs/lld/lld.md`](docs/lld/lld.md) for the design docs that stay current
+blueprints, and algorithmic flows, and [`docs/HLD.md`](docs/HLD.md) /
+[`docs/LLD.md`](docs/LLD.md) for the design docs that stay current
 when behavior evolves past what's written there.
 
 <!-- BEGIN GENERATED TREE (depth=1 entries=all) -->
