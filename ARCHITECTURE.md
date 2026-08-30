@@ -13,7 +13,7 @@ perimeter, and drives a two-stage onboarding flow.
 > interactive `demo/`. (This doc's class blueprints below predate the
 > implementation and describe the intended shape; where behavior has since
 > evolved beyond what's written here, the narrower
-> [`docs/hld/hld.md`](docs/hld/hld.md) and [`docs/lld/lld.md`](docs/lld/lld.md)
+> [`docs/HLD.md`](docs/HLD.md) and [`docs/LLD.md`](docs/LLD.md)
 > are kept current and win.)
 
 ## Design pillars
@@ -101,7 +101,7 @@ travels through linked `FallbackHandler`s, each returning a `HandlerOutcome`:
 `RateLimitHandler`/`RetryHandler` also exist in `fallback/handlers.py`, but as
 **optional standalone links** for compositions that want those concerns
 isolated — the default chain above folds both into step 4 instead, since they
-wrap the same network call. See `docs/lld/lld.md` §7.2 for the exact
+wrap the same network call. See `docs/LLD.md` §7.2 for the exact
 `_on_error` logic.
 
 `FallbackChain.execute` interprets outcomes: `CONTINUE` advances, `SUCCESS`
