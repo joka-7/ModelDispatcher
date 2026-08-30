@@ -87,11 +87,9 @@ ModelDispatcher/
 │   │   └── vite.config.ts
 │   └── README.md                         # ModelDispatcher Demo (FastAPI + React)
 ├── docs/
-│   ├── hld/                              # High-Level Design — kept current, narrower and wins over ARCHITECTURE.md…
-│   │   └── hld.md                        # ModelDispatcher — High-Level Design (HLD)
-│   ├── lld/                              # Low-Level Design — kept current, narrower and wins over ARCHITECTURE.md where…
-│   │   └── lld.md                        # ModelDispatcher — Low-Level Design (LLD)
 │   ├── .structure-notes.toml
+│   ├── HLD.md                            # High-Level Design — kept current, narrower and wins over ARCHITECTURE.md…
+│   ├── LLD.md                            # Low-Level Design — kept current, narrower and wins over ARCHITECTURE.md where…
 │   ├── STRUCTURE.md                      # Repository structure
 │   └── USAGE.md                          # Usage guide
 ├── examples/
