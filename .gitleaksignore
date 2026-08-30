@@ -1,0 +1,10 @@
+# Gitleaks findings reviewed and accepted as false positives.
+#
+# Format is a finding fingerprint: <commit>:<file>:<rule>:<line>.
+# Add an entry only after confirming the match is not a real credential — an
+# ignore file that accumulates unreviewed entries is worse than no scan.
+
+# A deliberately fake key inside the test that asserts SecretRedactor scrubs
+# it. The literal has to look like a real key for the test to be meaningful;
+# it authenticates nothing.
+ced5772071f501a03975dd354b1db3bdfc266bef:tests/test_security_redaction.py:generic-api-key:23
