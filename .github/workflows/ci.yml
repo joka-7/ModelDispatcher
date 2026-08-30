@@ -43,6 +43,24 @@ jobs:
       - name: Run the basic_agent example (smoke test)
         run: python examples/basic_agent.py
 
+  coverage:
+    name: Coverage gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Install package + dev deps
+        run: pip install -e ".[dev]" pytest-cov
+      - name: Run suite with coverage gate
+        # Floor set just under the 82% measured when this gate was added, so a
+        # marginal platform difference doesn't fail an unrelated PR. Ratchet it
+        # up as gaps close — it is a floor, not a target. Measured separately
+        # from the version matrix above: coverage is a property of the suite,
+        # not of the interpreter, so running it three times proves nothing.
+        run: pytest --cov=src/model_dispatcher --cov-report=term-missing --cov-fail-under=80
+
   frontend:
     name: Build React SPA
     runs-on: ubuntu-latest
