@@ -1,16 +1,18 @@
 # Repository structure
 
 Every file in this repo and what is inside it. The tree below is **generated** —
-run `python <ogen-ai>/skills/repo_tree/gen_tree.py --project . --output docs/STRUCTURE.md`
+run `python .ai/skills/repo_tree/gen_tree.py --project . --output docs/STRUCTURE.md`
 to refresh it, and never edit between the markers by hand.
 
 <!-- BEGIN GENERATED TREE (depth=all entries=all) -->
 ```text
-modeldispatcher/
+ModelDispatcher/
 ├── .github/
-│   └── workflows/
-│       ├── ci.yml
-│       └── release.yml
+│   ├── workflows/
+│   │   ├── ci.yml
+│   │   ├── release.yml
+│   │   └── security.yml
+│   └── copilot-instructions.md           # Copilot's copy of AGENTS.md (generated)
 ├── clients/                              # Non-Python integration layers, documented in ARCHITECTURE.md's…
 │   ├── browser-agent/                    # Browser-native TypeScript client (no server) — see its own README.md
 │   │   ├── src/
@@ -192,12 +194,19 @@ modeldispatcher/
 │   ├── test_retry_hints.py               # Unit tests for provider-agnostic "retry after" hint extraction.
 │   ├── test_router_triage.py             # Behavioral tests for triage classification and cost-tier routing.
 │   └── test_security_redaction.py        # Behavioral tests for credential resolution and secret redaction.
+├── .ai                                   # Ogen-ai submodule — the shared source of rules, skills and the ai-sync…
 ├── .dockerignore
 ├── .gitignore
+├── .gitleaksignore
+├── .gitmodules
+├── AGENTS.md                             # The compiled coding rules every AI assistant reads — generated, do not…
 ├── ARCHITECTURE.md                       # ModelDispatcher — Architecture
+├── CLAUDE.md                             # Claude Code's copy of AGENTS.md (generated)
 ├── Dockerfile
+├── GEMINI.md                             # Gemini CLI's copy of AGENTS.md (generated)
 ├── LICENSE
 ├── README.md                             # ModelDispatcher
+├── ai-config.toml                        # Which rule fragments and target tools ai-sync compiles for this repo
 └── pyproject.toml
 ```
 <!-- END GENERATED TREE -->
