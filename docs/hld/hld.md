@@ -2,7 +2,7 @@
 
 > **Scope:** the Python library under `src/model_dispatcher/`. The client/edge
 > integration layer (TypeScript client + Vercel template) is covered in
-> [`ARCHITECTURE.md`](../ARCHITECTURE.md)'s "Client-side integration &
+> [`ARCHITECTURE.md`](../../ARCHITECTURE.md)'s "Client-side integration &
 > packaging layer" section and summarised at the end of this document.
 >
 > **Status:** working library. Routing, fallback, quota, the agent loop, security, and
@@ -215,7 +215,7 @@ linked handlers, each returning a `HandlerOutcome`:
    retry *and* rate-limit failover. A rate limit normally moves on to the next pooled
    credential or provider candidate immediately, but when there's nowhere better to go
    it's retried instead, waiting for the provider's own "retry after" hint (capped at
-   120s by default) rather than failing outright — see `docs/LLD.md` §7.2.
+   120s by default) rather than failing outright — see `docs/lld/lld.md` §7.2.
 
 `FallbackChain.execute` interprets outcomes: `CONTINUE` advances, `SUCCESS` returns,
 `FALLBACK` pops the current candidate and restarts from the head, `STOP` raises. When
@@ -398,7 +398,7 @@ copying.
 
 ## 13. Client & edge integration (summary)
 
-See [`ARCHITECTURE.md`](../ARCHITECTURE.md)'s "Client-side integration & packaging
+See [`ARCHITECTURE.md`](../../ARCHITECTURE.md)'s "Client-side integration & packaging
 layer" section for the full design; in short, it packages the library for any Next.js/React
 app on Vercel:
 
