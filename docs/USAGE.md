@@ -2,8 +2,8 @@
 
 This is the practical "how do I wire this into *my* app" guide. For internal
 design (why the loop/router/fallback chain are built the way they are), see
-[`ARCHITECTURE.md`](../ARCHITECTURE.md), [`docs/hld/hld.md`](hld/hld.md), and
-[`docs/lld/lld.md`](lld/lld.md) instead — those are architecture docs, not
+[`ARCHITECTURE.md`](../ARCHITECTURE.md), [`docs/HLD.md`](HLD.md), and
+[`docs/LLD.md`](LLD.md) instead — those are architecture docs, not
 usage docs.
 
 There are two distinct consumers: a **Python backend** that runs the gateway
