@@ -10,9 +10,11 @@ ModelDispatcher/
 ├── .github/
 │   ├── workflows/
 │   │   ├── ci.yml
+│   │   ├── docs.yml
 │   │   ├── release.yml
 │   │   └── security.yml
-│   └── copilot-instructions.md           # Copilot's copy of AGENTS.md (generated)
+│   ├── copilot-instructions.md           # Copilot's copy of AGENTS.md (generated)
+│   └── dependabot.yml
 ├── clients/                              # Non-Python integration layers, documented in ARCHITECTURE.md's…
 │   ├── browser-agent/                    # Browser-native TypeScript client (no server) — see its own README.md
 │   │   ├── src/
