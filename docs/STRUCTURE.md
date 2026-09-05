@@ -10,6 +10,7 @@ ModelDispatcher/
 ├── .github/
 │   ├── workflows/
 │   │   ├── ci.yml
+│   │   ├── docs.yml
 │   │   ├── release.yml
 │   │   └── security.yml
 │   └── copilot-instructions.md           # Copilot's copy of AGENTS.md (generated)
