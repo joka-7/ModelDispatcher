@@ -46,6 +46,20 @@ ModelDispatcher/
 │   │   ├── package.json
 │   │   ├── tsconfig.build.json
 │   │   └── tsconfig.json
+│   ├── react-ui/                         # Shared React model/agent picker component — see its own README.md
+│   │   ├── src/
+│   │   │   ├── ModelPicker.tsx
+│   │   │   ├── index.ts
+│   │   │   └── styles.css
+│   │   ├── tests/
+│   │   │   ├── ModelPicker.test.tsx
+│   │   │   └── setup.ts
+│   │   ├── .gitignore
+│   │   ├── README.md                     # @joka-7/modeldispatcher-react-ui
+│   │   ├── package.json
+│   │   ├── tsconfig.build.json
+│   │   ├── tsconfig.json
+│   │   └── vitest.config.ts
 │   └── typescript/                       # Node/server TypeScript client — see its own README.md
 │       ├── src/
 │       │   ├── interceptors/
@@ -88,6 +102,7 @@ ModelDispatcher/
 │   └── README.md                         # ModelDispatcher Demo (FastAPI + React)
 ├── docs/
 │   ├── .structure-notes.toml
+│   ├── GLOSSARY.md                       # Plain-language AI/agent/prompt/key glossary linked from ModelPicker
 │   ├── HLD.md                            # High-Level Design — kept current, narrower and wins over ARCHITECTURE.md…
 │   ├── LLD.md                            # Low-Level Design — kept current, narrower and wins over ARCHITECTURE.md where…
 │   ├── STRUCTURE.md                      # Repository structure
