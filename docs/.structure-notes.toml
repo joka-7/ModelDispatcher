@@ -13,6 +13,7 @@
 "src/model_dispatcher/quota" = "TOKEN QUOTAS — manager, tenant, tokenizer, store (in-memory)"
 "src/model_dispatcher/security" = "PERIMETER — validator, credential resolver, redaction"
 "src/model_dispatcher/onboarding" = "TWO-STAGE — resolver + KeyWizardHandoff payload"
+"src/model_dispatcher/byok" = "SERVER + BYOK — registry builder, timeout-bounded dispatch"
 "src/model_dispatcher/observability" = "Redaction-aware logging + vendor-neutral metrics"
 "src/model_dispatcher/py.typed" = "PEP 561 marker — this package ships inline type hints"
 

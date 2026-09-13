@@ -19,7 +19,9 @@ from .config import GatewaySettings, QuotaDefaults, RoutingPolicy, SecuritySetti
 from .exceptions import (
     AllProvidersExhausted,
     AuthenticationError,
+    DispatchTimeoutError,
     ModelDispatcherError,
+    NoProviderAvailableError,
     PerimeterViolation,
     QuotaExceededError,
     RateLimitError,
@@ -104,4 +106,6 @@ __all__ = [
     "QuotaExceededError",
     "AllProvidersExhausted",
     "ToolExecutionError",
+    "NoProviderAvailableError",
+    "DispatchTimeoutError",
 ]

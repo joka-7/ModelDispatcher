@@ -27,6 +27,7 @@ perimeter, and drives a two-stage onboarding flow.
 | Multi-tenant fairness | **Reserve/commit token quotas** | `quota/` |
 | Untrusted-edge safety | **Perimeter + credential precedence** | `security/` |
 | Onboarding | **Two-stage: zero-setup → GUI handoff** | `onboarding/` |
+| Server-pooled + BYOK keys | **Registry builder + timeout-bounded dispatch** | `byok/` |
 | One entry point | **Facade** | `gateway.py` (`ModelGateway`) |
 
 ## Directory layout
@@ -45,6 +46,7 @@ src/model_dispatcher/
 ├── quota/              # TOKEN QUOTAS — manager, tenant, tokenizer, store (in-memory)
 ├── security/           # PERIMETER — validator, credential resolver, redaction
 ├── onboarding/         # TWO-STAGE — resolver + KeyWizardHandoff payload
+├── byok/               # SERVER + BYOK — registry builder, timeout-bounded dispatch
 └── observability/      # redaction-aware logging + vendor-neutral metrics
 ```
 
@@ -167,6 +169,35 @@ appears in a `Credential`'s `repr()`, only its masked `secret_ref`.
   The library returns the structured object; the web app maps it to HTTP and
   launches its key wizard.
 
+### BYOK server integration (`byok/`)
+
+For an app that runs its own single backend (no separate client package
+needed, since its frontend and this backend share an origin) and wants to
+mix a server operator's own pooled key per vendor with a visitor's
+bring-your-own key behind one AI settings panel — extracted from real apps
+that had each hand-built this exact wiring around the plain `ModelGateway`:
+
+- **`ProviderSpec` + `build_registry`** — one table per vendor (adapter
+  class, key/model env vars, default model); `build_registry` registers only
+  the vendors with *some* key (server env var, visitor-supplied, or both)
+  for the current request, and raises `NoProviderAvailableError` if none
+  qualify — a keyless vendor must never reach `CredentialResolver`, which
+  treats a missing credential as terminal, not fallback-worthy.
+- **`credential_metadata`** — maps a visitor's `{vendor: [key, ...]}` onto
+  the `user_key:<family>` tenant metadata shape `CredentialResolver` already
+  reads, so a visitor's key takes precedence over the server's shared one
+  for that vendor with no extra wiring.
+- **`configured_providers`** — which vendors have a server-side key, for an
+  AI settings UI to show "no key needed" versus "bring your own" per vendor.
+- **`dispatch_with_timeout` / `adispatch_with_timeout`** — no built-in
+  provider adapter sets a network timeout on the vendor client it
+  constructs, so a live server needs its own hard ceiling regardless. The
+  sync form bounds `gateway.dispatch` with a caller-owned
+  `ThreadPoolExecutor` and `Future.result(timeout=...)`; the async form
+  wraps `gateway.adispatch` in `asyncio.wait_for`, which cancels the
+  coroutine outright instead of leaving a thread running. Both raise
+  `DispatchTimeoutError` on expiry.
+
 ### Exceptions (`exceptions.py`)
 
 Every error subclasses `ModelDispatcherError` and carries `http_status` +
@@ -179,7 +210,9 @@ ModelDispatcherError            (500)
 ├── RateLimitError              (429)   # internal fallback signal
 ├── QuotaExceededError          (402/429, carries the key-wizard handoff)
 ├── AllProvidersExhausted       (503)
-└── ToolExecutionError          (500)
+├── ToolExecutionError          (500)
+├── NoProviderAvailableError    (503, raised by byok.build_registry)
+└── DispatchTimeoutError        (504, raised by byok.dispatch_with_timeout)
 ```
 
 ## End-to-end dispatch flow
@@ -220,6 +253,9 @@ QuotaHandler:
 - **Distributed quotas:** implement the `QuotaStore` Protocol.
 - **New fallback behaviour:** add a `FallbackHandler` and place it in the chain.
 - **Metrics backend:** implement the `MetricsSink` Protocol.
+- **Server pooling its own keys with visitor BYOK keys:** use
+  `model_dispatcher.byok.build_registry` / `credential_metadata` instead of
+  hand-rolling the same registry-building wiring per app.
 
 ## Client-side integration & packaging layer
 

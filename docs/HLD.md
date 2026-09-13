@@ -267,6 +267,21 @@ scrubs secrets/PII from anything bound for logs or metrics.
 
   with `http_status` `402` (budget/upgrade wall) or `429` (rolling rate window).
 
+### 6.8 BYOK — server-pooled keys + visitor keys (`byok/`)
+
+For a server-hosted app that mixes its own pooled key per vendor with a
+visitor's bring-your-own key behind one AI settings panel (no separate
+client package needed, since frontend and backend share an origin):
+`build_registry` registers only the vendors with *some* key (server env
+var, visitor-supplied, or both) for the current request — a keyless vendor
+must never reach `CredentialResolver`, which treats a missing credential as
+terminal rather than fallback-worthy — and raises `NoProviderAvailableError`
+if none qualify. `credential_metadata` maps a visitor's keys onto the same
+`user_key:<family>` tenant metadata `CredentialResolver` already reads.
+`dispatch_with_timeout` / `adispatch_with_timeout` add the network timeout
+no built-in provider adapter sets on its own vendor client, raising
+`DispatchTimeoutError` on expiry.
+
 ---
 
 ## 7. Error model
@@ -281,7 +296,9 @@ ModelDispatcherError            (500)
 ├── RateLimitError              (429)   # internal fallback signal
 ├── QuotaExceededError          (402/429, carries the key-wizard handoff)
 ├── AllProvidersExhausted       (503)
-└── ToolExecutionError          (500)
+├── ToolExecutionError          (500)
+├── NoProviderAvailableError    (503, byok.build_registry)
+└── DispatchTimeoutError        (504, byok.dispatch_with_timeout)
 ```
 
 ---
@@ -393,6 +410,9 @@ copying.
 - **Metrics backend:** implement the `MetricsSink` Protocol.
 - **Routing policy tuning:** adjust `RoutingPolicy` (floors, escalation, `max_candidates`)
   — no code change.
+- **Server pooling its own keys with visitor BYOK keys:** use
+  `model_dispatcher.byok.build_registry` / `credential_metadata` — no hand-rolled
+  registry-building wiring per app.
 
 ---
 
