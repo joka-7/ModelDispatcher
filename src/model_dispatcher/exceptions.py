@@ -26,6 +26,8 @@ __all__ = [
     "QuotaExceededError",
     "AllProvidersExhausted",
     "ToolExecutionError",
+    "NoProviderAvailableError",
+    "DispatchTimeoutError",
 ]
 
 
@@ -110,6 +112,34 @@ class AllProvidersExhausted(ModelDispatcherError):
 
     http_status = 503
     error_code = "all_providers_exhausted"
+
+
+class NoProviderAvailableError(ModelDispatcherError):
+    """No provider has any usable key, for any registered vendor.
+
+    Neither a server-side key nor a caller-supplied one exists. Raised by
+    :func:`~model_dispatcher.byok.build_registry` for a server that
+    pools its own keys with per-request, bring-your-own-key credentials: a
+    would-be-empty registry means the request can't even be attempted, so
+    this is raised before any candidate is routed rather than surfacing as
+    a routing/dispatch failure downstream.
+    """
+
+    http_status = 503
+    error_code = "no_provider_available"
+
+
+class DispatchTimeoutError(ModelDispatcherError):
+    """A dispatch did not complete within the caller's deadline.
+
+    Raised by :func:`~model_dispatcher.byok.dispatch_with_timeout` /
+    :func:`~model_dispatcher.byok.adispatch_with_timeout` -- a caller-side
+    ceiling, since no built-in provider adapter sets a network timeout of
+    its own on the vendor client it constructs.
+    """
+
+    http_status = 504
+    error_code = "dispatch_timeout"
 
 
 class ToolExecutionError(ModelDispatcherError):

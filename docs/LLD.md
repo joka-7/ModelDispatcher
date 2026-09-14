@@ -49,6 +49,9 @@ src/model_dispatcher/
 ├── onboarding/
 │   ├── flow.py          #   OnboardingResolver, OnboardingStage
 │   └── handoff.py       #   KeyWizardHandoff, HandoffResponse, HandoffAction
+├── byok/                # SERVER + BYOK
+│   ├── registry.py      #   ProviderSpec, build_registry, credential_metadata
+│   └── dispatch.py      #   dispatch_with_timeout, adispatch_with_timeout
 └── observability/
     ├── logging.py       #   StructuredLogger
     └── metrics.py       #   MetricsSink (Protocol), NullMetricsSink
@@ -722,7 +725,68 @@ class OnboardingResolver:
 
 ---
 
-## 12. Exceptions (`exceptions.py`)
+## 12. BYOK — server + visitor keys (`byok/`)
+
+For a server-hosted app mixing its own pooled key per vendor with a visitor's
+bring-your-own key. Not re-exported from the top-level `model_dispatcher` package
+(same convention as `security`/`routing`/`fallback`) — import from `model_dispatcher.byok`.
+
+### 12.1 `ProviderSpec` + registry building (`registry.py`)
+
+```python
+class _ProviderFactory(Protocol):              # structural — matches every built-in
+    def __call__(self, *, model: str, api_key: str | None = None) -> ModelProvider
+
+@dataclass(frozen=True, slots=True)
+class ProviderSpec:
+    provider_cls: _ProviderFactory
+    key_env_var: str        # this server's shared key for the vendor, if set
+    model_env_var: str      # overrides default_model, if set
+    default_model: str
+
+def configured_providers(specs: Mapping[str, ProviderSpec]) -> frozenset[str]
+def credential_metadata(credentials: Mapping[str, Sequence[str]]) -> dict[str, str]
+def build_registry(
+    specs: Mapping[str, ProviderSpec],
+    credentials: Mapping[str, Sequence[str]],
+) -> ProviderRegistry
+```
+
+`build_registry` registers a vendor only if `os.environ[key_env_var]` is set, or
+`credentials` has at least one key under that vendor's name — never both absent. Raises
+`NoProviderAvailableError` if the resulting registry is empty: a keyless vendor must never
+reach `CredentialResolver`, which treats a missing credential as terminal rather than
+fallback-worthy, so it must never even be offered to the router. `credential_metadata`
+produces the same `user_key:<family>` (comma-joined) shape `CredentialResolver.
+resolve_candidates` already reads (§10.2) — a visitor's own key for a vendor always wins
+over that vendor's server key, with no extra wiring needed.
+
+### 12.2 Timeout-bounded dispatch (`dispatch.py`)
+
+```python
+def dispatch_with_timeout(
+    gateway: ModelGateway, request: CompletionRequest, tenant: TenantContext, *,
+    executor: concurrent.futures.ThreadPoolExecutor, timeout_seconds: float,
+    tools: ToolRegistry | None = None,
+) -> RunResult
+
+async def adispatch_with_timeout(
+    gateway: ModelGateway, request: CompletionRequest, tenant: TenantContext, *,
+    timeout_seconds: float, tools: ToolRegistry | None = None,
+) -> RunResult
+```
+
+No built-in provider adapter sets a network timeout on the vendor client it constructs, so
+a live server needs its own hard ceiling. The sync form submits `gateway.dispatch` to the
+caller-owned `executor` and bounds it with `Future.result(timeout=...)`; the worker thread
+keeps running in the background until the underlying socket itself resolves — this bounds
+the caller's wait, not the provider call. The async form wraps `gateway.adispatch` in
+`asyncio.wait_for`, which cancels the awaited coroutine outright on timeout instead of
+leaving anything running. Both raise `DispatchTimeoutError` on expiry.
+
+---
+
+## 13. Exceptions (`exceptions.py`)
 
 ```python
 class ModelDispatcherError(Exception):
@@ -740,10 +804,12 @@ class ModelDispatcherError(Exception):
 | `QuotaExceededError` | 402/429 | `quota_exceeded` | wraps `HandoffResponse`; `to_payload` = handoff payload |
 | `AllProvidersExhausted` | 503 | `all_providers_exhausted` | candidates spent |
 | `ToolExecutionError` | 500 | `tool_execution_error` | carries `tool_name` |
+| `NoProviderAvailableError` | 503 | `no_provider_available` | `byok.build_registry`, empty registry |
+| `DispatchTimeoutError` | 504 | `dispatch_timeout` | `byok.dispatch_with_timeout` deadline |
 
 ---
 
-## 13. Concurrency bridge (`_async_bridge.py`)
+## 14. Concurrency bridge (`_async_bridge.py`)
 
 ```python
 def run_sync[T](coro: Coroutine[object, object, T]) -> T
@@ -756,7 +822,7 @@ sync API can be layered on the async core without duplicating pipeline logic.
 
 ---
 
-## 14. Observability (`observability/`)
+## 15. Observability (`observability/`)
 
 ```python
 class StructuredLogger:
@@ -773,7 +839,7 @@ class NullMetricsSink:  # no-op default
 
 ---
 
-## 15. End-to-end data flow
+## 16. End-to-end data flow
 
 ```mermaid
 sequenceDiagram
@@ -830,7 +896,7 @@ sequenceDiagram
 
 ---
 
-## 16. Design decisions & alternatives considered
+## 17. Design decisions & alternatives considered
 
 ### Retry vs fallback placement
 - **Chosen:** fold transient retry *and* rate-limit failover into `ModelInvocationHandler`,
@@ -869,7 +935,7 @@ sequenceDiagram
 
 ---
 
-## 17. Testing strategy
+## 18. Testing strategy
 
 Contract tests live under `tests/` and exercise each seam with `MockProvider` (scripted
 replies + failure injection) so no network or credentials are needed:

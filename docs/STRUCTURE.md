@@ -46,6 +46,20 @@ ModelDispatcher/
 │   │   ├── package.json
 │   │   ├── tsconfig.build.json
 │   │   └── tsconfig.json
+│   ├── react-ui/                         # Shared React model/agent picker component — see its own README.md
+│   │   ├── src/
+│   │   │   ├── ModelPicker.tsx
+│   │   │   ├── index.ts
+│   │   │   └── styles.css
+│   │   ├── tests/
+│   │   │   ├── ModelPicker.test.tsx
+│   │   │   └── setup.ts
+│   │   ├── .gitignore
+│   │   ├── README.md                     # @joka-7/modeldispatcher-react-ui
+│   │   ├── package.json
+│   │   ├── tsconfig.build.json
+│   │   ├── tsconfig.json
+│   │   └── vitest.config.ts
 │   └── typescript/                       # Node/server TypeScript client — see its own README.md
 │       ├── src/
 │       │   ├── interceptors/
@@ -88,6 +102,7 @@ ModelDispatcher/
 │   └── README.md                         # ModelDispatcher Demo (FastAPI + React)
 ├── docs/
 │   ├── .structure-notes.toml
+│   ├── GLOSSARY.md                       # Plain-language AI/agent/prompt/key glossary linked from ModelPicker
 │   ├── HLD.md                            # High-Level Design — kept current, narrower and wins over ARCHITECTURE.md…
 │   ├── LLD.md                            # Low-Level Design — kept current, narrower and wins over ARCHITECTURE.md where…
 │   ├── STRUCTURE.md                      # Repository structure
@@ -96,6 +111,10 @@ ModelDispatcher/
 │   └── basic_agent.py                    # Minimal end-to-end usage example
 ├── src/
 │   └── model_dispatcher/
+│       ├── byok/                         # SERVER + BYOK — registry builder, timeout-bounded dispatch
+│       │   ├── __init__.py               # Server-hosted BYOK integration: pooled server keys plus visitor keys.
+│       │   ├── dispatch.py               # Timeout-bounded dispatch for a server serving live visitor requests.
+│       │   └── registry.py               # Registry building for a server pooling its own keys with visitor BYOK keys.
 │       ├── fallback/                     # CHAIN OF RESPONSIBILITY — handlers + chain executor + conditions
 │       │   ├── __init__.py               # Chain-of-Responsibility fallback handling.
 │       │   ├── chain.py                  # Builder and executor for the fallback chain of responsibility.
@@ -184,6 +203,7 @@ ModelDispatcher/
 ├── tests/                                # Behavioral test suite (routing, fallback, quota, agent loop, security,…
 │   ├── conftest.py                       # Shared fixtures for the behavioral test-suite.
 │   ├── test_agent_loop.py                # Behavioral tests for the native agent tool-calling loop.
+│   ├── test_byok.py                      # Behavioral tests for the `byok` server-integration subpackage.
 │   ├── test_fallback_chain.py            # Behavioral tests for chain-of-responsibility fallback and failover.
 │   ├── test_gateway_facade.py            # Behavioral tests for the public facade, perimeter, and API surface.
 │   ├── test_onboarding_handoff.py        # Behavioral tests for the two-stage onboarding flow and Stage-2 handoff.

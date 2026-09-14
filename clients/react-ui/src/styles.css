@@ -1,0 +1,85 @@
+/*
+ * Default look for ModelPicker. Plain CSS, no build-time preprocessing, so it
+ * works whether the consuming app bundles with Vite, Next.js, or anything
+ * else — import it once (`@joka-7/modeldispatcher-react-ui/styles.css`) or
+ * skip it and style the `md-*` classes yourself.
+ */
+
+.md-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 28rem;
+  font-family: inherit;
+}
+
+.md-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.md-field label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.md-select,
+.md-input {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #d0d5dd;
+  border-radius: 0.375rem;
+  font-size: 0.95rem;
+}
+
+.md-help-link,
+.md-glossary-link {
+  font-size: 0.8rem;
+  color: #2563eb;
+  text-decoration: none;
+  width: fit-content;
+}
+
+.md-help-link:hover,
+.md-glossary-link:hover {
+  text-decoration: underline;
+}
+
+.md-external-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px dashed #d0d5dd;
+  border-radius: 0.5rem;
+}
+
+.md-external-chat-lead {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.md-external-chat-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.md-external-chat-btn {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid #d0d5dd;
+  border-radius: 999px;
+  background: #f9fafb;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.md-external-chat-btn:hover {
+  background: #f0f1f3;
+}
+
+.md-status {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #475467;
+}

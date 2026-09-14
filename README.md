@@ -50,6 +50,14 @@ bring-your-own-key calls straight to a provider — see
 idea (Gemini/OpenAI/Anthropic/Groq/Ollama), running client-side with no
 server and no vendor SDK required.
 
+Building the settings screen for that in React? See
+[`clients/react-ui`](./clients/react-ui)
+(`@joka-7/modeldispatcher-react-ui`) for one `<ModelPicker>` component —
+provider/model select, key input, the no-key "try it elsewhere" escape
+hatch, and a link to [`docs/GLOSSARY.md`](./docs/GLOSSARY.md) for
+first-time users — so every app renders the same picker instead of each
+one hand-building its own.
+
 ## Quickstart
 
 No API keys needed — this uses the keyless `MockProvider`:
