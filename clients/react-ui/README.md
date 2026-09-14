@@ -18,6 +18,16 @@ these are purely the visual layer over that package's provider registry,
 favorite-preference storage, and `openExternalChat` escape hatch, so the two
 stay in lockstep.
 
+**`ModelPicker`** — provider/model/key, plus saving a favorite. Nothing
+below opens anything:
+
+![ModelPicker settings screen: a provider dropdown set to Anthropic Claude, a model field, a masked API key field with a "Get a key" link, and a dashed box offering to save Claude as a favorite free AI app via radio buttons, with a note that picking one never opens anything](./screenshots/settings.png)
+
+**`AskExternallyButton`** — rendered separately, wherever a question is
+actually being asked. This is the only thing that opens a tab:
+
+![AskExternallyButton: a pill-shaped "Ask Claude" button, with a status line below it reading "Opened Claude with your question filled in — also copied to your clipboard."](./screenshots/action.png)
+
 ## Why
 
 StepByLearn, JobFlowTracker, KanDOne, and HighFive each ended up with their

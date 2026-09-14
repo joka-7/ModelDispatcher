@@ -50,6 +50,9 @@ ModelDispatcher/
 │   │   ├── tsconfig.build.json
 │   │   └── tsconfig.json
 │   ├── react-ui/                         # Shared React model/agent picker component — see its own README.md
+│   │   ├── screenshots/
+│   │   │   ├── action.png
+│   │   │   └── settings.png
 │   │   ├── src/
 │   │   │   ├── AskExternallyButton.tsx
 │   │   │   ├── ModelPicker.tsx
