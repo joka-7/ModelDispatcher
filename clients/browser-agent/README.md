@@ -76,6 +76,37 @@ always copies the question to the clipboard regardless, so a broken or
 removed parameter never means the user's question is lost, just that they
 paste instead of finding it already typed in.
 
+## Saving a favorite for the escape hatch: `loadExternalChatFavorite`
+
+`openExternalChat` is an *action* — it navigates the instant it's called, so
+it belongs on a button next to wherever the user is actually about to ask
+something, never inside a settings screen (clicking a settings option should
+never itself open a new tab). What *does* belong in settings is letting the
+visitor pick and save **which** free product they'd reach for, ahead of
+time — that's what this is for:
+
+```ts
+import {
+  loadExternalChatFavorite,
+  saveExternalChatFavorite,
+} from "@joka-7/modeldispatcher-browser-agent";
+
+// Settings screen: save the pick. No network call, no navigation.
+saveExternalChatFavorite("claude");
+
+// Wherever the user composes a question: read it back to decide what
+// the "ask externally" button should say/do.
+const favorite = loadExternalChatFavorite(); // "claude" | null
+if (favorite) {
+  await openExternalChat(favorite, currentQuestion);
+}
+```
+
+Deliberately separate storage from `loadConfig`/`saveConfig` (BYOK
+provider/key/model) — picking a favorite here has nothing to do with which
+BYOK provider is configured, and a settings screen commonly offers both as
+independent, unrelated choices.
+
 ## What's in scope, what isn't
 
 This package owns the generic "talk to a provider" plumbing: provider
@@ -94,5 +125,5 @@ npm run typecheck
 npm test
 ```
 
-All 58 tests run against mocked `fetch`/`ReadableStream`/`window.open`/
+All 65 tests run against mocked `fetch`/`ReadableStream`/`window.open`/
 clipboard — no real network, no real API key needed.

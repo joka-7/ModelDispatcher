@@ -1,11 +1,14 @@
 /**
  * @joka-7/modeldispatcher-react-ui — public API surface.
  *
- * One React AI model/agent picker component for every app: provider + model
- * select, BYOK key input, the no-key "try it elsewhere" escape hatch, and a
- * beginner's link — so the settings screen looks the same everywhere instead
- * of each app hand-rolling its own.
+ * Two components for every app's AI settings: `ModelPicker` (a pure
+ * settings screen — provider/model/key, and saving a favorite free AI app;
+ * nothing in it ever navigates) and `AskExternallyButton` (the action that
+ * actually opens the saved favorite, meant to live wherever the user
+ * composes a question, not on the settings screen).
  */
 
 export { ModelPicker } from "./ModelPicker.js";
 export type { ModelPickerProps } from "./ModelPicker.js";
+export { AskExternallyButton } from "./AskExternallyButton.js";
+export type { AskExternallyButtonProps } from "./AskExternallyButton.js";

@@ -37,7 +37,10 @@ export const DEFAULT_CONFIG_KEYS: ConfigKeys = {
 
 const DEFAULT_OLLAMA_URL = "http://localhost:11434";
 
-function resolveStorage(storage?: ConfigStorage): ConfigStorage {
+/** Resolve an explicit storage, or fall back to `localStorage` in a browser.
+ * Shared with {@link ./externalChatFavorite.js} so both persistence modules
+ * agree on where "no storage available" should throw. */
+export function resolveStorage(storage?: ConfigStorage): ConfigStorage {
   if (storage) return storage;
   if (typeof localStorage !== "undefined") return localStorage;
   throw new Error(

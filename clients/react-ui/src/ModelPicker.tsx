@@ -6,17 +6,19 @@
  * `localStorage` or any app's business logic, only `AgentConfig` in and a
  * changed `AgentConfig` out. Wire it to `loadConfig`/`saveConfig` from
  * `@joka-7/modeldispatcher-browser-agent` (or your own store) at the call site.
+ *
+ * Settings only: nothing rendered here ever navigates or calls
+ * `openExternalChat`. Picking a favorite free AI app just saves *which*
+ * product the user would reach for — the button that actually opens it
+ * belongs wherever the user is composing a question, via
+ * {@link AskExternallyButton}, not on a preferences screen.
  */
 
-import { useState } from "react";
 import {
   EXTERNAL_CHAT_PROVIDERS,
-  openExternalChat,
   PROVIDERS,
   type AgentConfig,
   type ExternalChatProviderId,
-  type OpenExternalChatDeps,
-  type OpenExternalChatResult,
   type ProviderId,
 } from "@joka-7/modeldispatcher-browser-agent";
 
@@ -28,16 +30,15 @@ export interface ModelPickerProps {
   config: AgentConfig;
   /** Called with the full, updated config on any provider/model/key/URL change. */
   onConfigChange: (config: AgentConfig) => void;
-  /** The user's current prompt, carried into the "try it elsewhere" escape
-   * hatch so switching to a free chat product doesn't lose their question.
-   * Omit to open an empty compose box. */
-  question?: string;
-  /** Called after `openExternalChat` opens a tab, e.g. to show a toast. */
-  onExternalChat?: (result: OpenExternalChatResult) => void;
+  /** The saved "ask externally" favorite, or `null` if none is picked yet
+   * (see `loadExternalChatFavorite` in `@joka-7/modeldispatcher-browser-agent`). */
+  externalChatFavorite: ExternalChatProviderId | null;
+  /** Called when the user picks or clears a favorite. Persist it yourself
+   * (e.g. with `saveExternalChatFavorite`) — this component only reports the
+   * choice and never opens anything itself. */
+  onExternalChatFavoriteChange: (favorite: ExternalChatProviderId | null) => void;
   /** Where "New to AI agents?" links. Defaults to this project's own glossary. */
   glossaryUrl?: string;
-  /** Injected `openExternalChat` deps — for tests or a non-browser host. */
-  externalChatDeps?: OpenExternalChatDeps;
 }
 
 const PROVIDER_LIST = Object.values(PROVIDERS);
@@ -46,12 +47,10 @@ const EXTERNAL_CHAT_LIST = Object.values(EXTERNAL_CHAT_PROVIDERS);
 export function ModelPicker({
   config,
   onConfigChange,
-  question,
-  onExternalChat,
+  externalChatFavorite,
+  onExternalChatFavoriteChange,
   glossaryUrl = DEFAULT_GLOSSARY_URL,
-  externalChatDeps,
 }: ModelPickerProps): JSX.Element {
-  const [lastExternalChat, setLastExternalChat] = useState<OpenExternalChatResult | null>(null);
   const provider = PROVIDERS[config.provider];
 
   function handleProviderChange(next: ProviderId): void {
@@ -61,12 +60,6 @@ export function ModelPicker({
       model: PROVIDERS[next].defaultModel,
       ollamaUrl: config.ollamaUrl,
     });
-  }
-
-  async function handleExternalChat(id: ExternalChatProviderId): Promise<void> {
-    const result = await openExternalChat(id, question ?? "", externalChatDeps);
-    setLastExternalChat(result);
-    onExternalChat?.(result);
   }
 
   return (
@@ -129,27 +122,33 @@ export function ModelPicker({
         </div>
       )}
 
-      <div className="md-external-chat">
-        <p className="md-external-chat-lead">No key yet? Try it free in another app instead:</p>
-        <div className="md-external-chat-buttons">
+      <div className="md-favorite" role="radiogroup" aria-label="Favorite free AI app">
+        <p className="md-favorite-lead">Or save a favorite free AI app for later:</p>
+        <div className="md-favorite-options">
+          <label className="md-favorite-option">
+            <input
+              type="radio"
+              name="md-external-chat-favorite"
+              checked={externalChatFavorite === null}
+              onChange={() => onExternalChatFavoriteChange(null)}
+            />
+            None
+          </label>
           {EXTERNAL_CHAT_LIST.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className="md-external-chat-btn"
-              onClick={() => void handleExternalChat(p.id)}
-            >
+            <label key={p.id} className="md-favorite-option">
+              <input
+                type="radio"
+                name="md-external-chat-favorite"
+                checked={externalChatFavorite === p.id}
+                onChange={() => onExternalChatFavoriteChange(p.id)}
+              />
               {p.name}
-            </button>
+            </label>
           ))}
         </div>
-        {lastExternalChat && (
-          <p className="md-status" role="status">
-            Opened {EXTERNAL_CHAT_PROVIDERS[lastExternalChat.provider].name}
-            {lastExternalChat.prefilled ? " with your question filled in" : ""}
-            {lastExternalChat.copiedToClipboard ? " — also copied to your clipboard." : "."}
-          </p>
-        )}
+        <p className="md-favorite-hint">
+          Just a saved preference — picking one here never opens anything.
+        </p>
       </div>
 
       <a className="md-glossary-link" href={glossaryUrl} target="_blank" rel="noreferrer">

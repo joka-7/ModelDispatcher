@@ -12,7 +12,8 @@ ModelDispatcher/
 │   │   ├── ci.yml
 │   │   ├── release.yml
 │   │   └── security.yml
-│   └── copilot-instructions.md           # Copilot's copy of AGENTS.md (generated)
+│   ├── copilot-instructions.md           # Copilot's copy of AGENTS.md (generated)
+│   └── dependabot.yml
 ├── clients/                              # Non-Python integration layers, documented in ARCHITECTURE.md's…
 │   ├── browser-agent/                    # Browser-native TypeScript client (no server) — see its own README.md
 │   │   ├── src/
@@ -24,6 +25,7 @@ ModelDispatcher/
 │   │   │   ├── agent.ts
 │   │   │   ├── config.ts
 │   │   │   ├── externalChat.ts
+│   │   │   ├── externalChatFavorite.ts
 │   │   │   ├── http.ts
 │   │   │   ├── index.ts
 │   │   │   ├── messages.ts
@@ -38,6 +40,7 @@ ModelDispatcher/
 │   │   │   ├── agent.test.ts
 │   │   │   ├── config.test.ts
 │   │   │   ├── externalChat.test.ts
+│   │   │   ├── externalChatFavorite.test.ts
 │   │   │   ├── http.test.ts
 │   │   │   └── messages.test.ts
 │   │   ├── .gitignore
@@ -48,10 +51,12 @@ ModelDispatcher/
 │   │   └── tsconfig.json
 │   ├── react-ui/                         # Shared React model/agent picker component — see its own README.md
 │   │   ├── src/
+│   │   │   ├── AskExternallyButton.tsx
 │   │   │   ├── ModelPicker.tsx
 │   │   │   ├── index.ts
 │   │   │   └── styles.css
 │   │   ├── tests/
+│   │   │   ├── AskExternallyButton.test.tsx
 │   │   │   ├── ModelPicker.test.tsx
 │   │   │   └── setup.ts
 │   │   ├── .gitignore

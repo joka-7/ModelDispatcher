@@ -45,7 +45,7 @@
   text-decoration: underline;
 }
 
-.md-external-chat {
+.md-favorite {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -54,18 +54,41 @@
   border-radius: 0.5rem;
 }
 
-.md-external-chat-lead {
+.md-favorite-lead {
   margin: 0;
   font-size: 0.85rem;
+  font-weight: 600;
 }
 
-.md-external-chat-buttons {
+.md-favorite-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.5rem 1rem;
 }
 
-.md-external-chat-btn {
+.md-favorite-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.md-favorite-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #667085;
+}
+
+/* AskExternallyButton — the action half, rendered away from ModelPicker */
+.md-ask-externally {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: flex-start;
+}
+
+.md-ask-externally-btn {
   padding: 0.4rem 0.75rem;
   border: 1px solid #d0d5dd;
   border-radius: 999px;
@@ -74,7 +97,7 @@
   cursor: pointer;
 }
 
-.md-external-chat-btn:hover {
+.md-ask-externally-btn:hover {
   background: #f0f1f3;
 }
 

@@ -1,7 +1,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AgentConfig } from "@joka-7/modeldispatcher-browser-agent";
+import type { AgentConfig, ExternalChatProviderId } from "@joka-7/modeldispatcher-browser-agent";
 
 import { ModelPicker } from "../src/ModelPicker.js";
 
@@ -47,11 +47,18 @@ function setNativeInputValue(input: HTMLInputElement, value: string): void {
 function render(props: {
   config: AgentConfig;
   onConfigChange: (config: AgentConfig) => void;
-  question?: string;
-  onExternalChat?: (result: unknown) => void;
+  externalChatFavorite?: ExternalChatProviderId | null;
+  onExternalChatFavoriteChange?: (favorite: ExternalChatProviderId | null) => void;
+  glossaryUrl?: string;
 }): void {
   act(() => {
-    root.render(<ModelPicker {...props} />);
+    root.render(
+      <ModelPicker
+        externalChatFavorite={null}
+        onExternalChatFavoriteChange={vi.fn()}
+        {...props}
+      />,
+    );
   });
 }
 
@@ -105,33 +112,84 @@ describe("ModelPicker", () => {
     expect(onConfigChange).toHaveBeenCalledWith({ ...BASE_CONFIG, apiKey: "AIza-new-key" });
   });
 
-  it("opens the external chat escape hatch with the current question and reports the result", async () => {
-    const open = vi.fn();
-    const onExternalChat = vi.fn();
-    act(() => {
-      root.render(
-        <ModelPicker
-          config={BASE_CONFIG}
-          onConfigChange={vi.fn()}
-          question="how do closures work?"
-          onExternalChat={onExternalChat}
-          externalChatDeps={{ open, clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } }}
-        />,
-      );
-    });
+  it("never renders anything that opens a new tab — no button, only radio inputs", () => {
+    render({ config: BASE_CONFIG, onConfigChange: vi.fn() });
 
-    const buttons = Array.from(container.querySelectorAll(".md-external-chat-btn"));
-    const claudeButton = buttons.find((b) => b.textContent === "Claude") as HTMLButtonElement;
+    // The only clickable controls in ModelPicker are the provider <select>,
+    // the model/key <input>s, and the favorite <input type="radio">s — never
+    // a <button>. Settings must never itself trigger navigation.
+    expect(container.querySelector("button")).toBeNull();
+  });
 
-    await act(async () => {
-      claudeButton.click();
-      await Promise.resolve();
-    });
+  it("lists every external chat provider plus a None option as radio inputs", () => {
+    render({ config: BASE_CONFIG, onConfigChange: vi.fn() });
 
-    expect(onExternalChat).toHaveBeenCalledWith(
-      expect.objectContaining({ provider: "claude", prefilled: true }),
+    const radios = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="radio"]'),
     );
-    expect(container.querySelector(".md-status")?.textContent).toContain("Claude");
+    const labels = radios.map((r) => r.closest("label")?.textContent);
+    expect(labels).toEqual(["None", "ChatGPT", "Claude", "Gemini (Google AI Mode)", "Groq"]);
+  });
+
+  it("checks the radio matching the current externalChatFavorite", () => {
+    render({ config: BASE_CONFIG, onConfigChange: vi.fn(), externalChatFavorite: "claude" });
+
+    const radios = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="radio"]'),
+    );
+    const checked = radios.find((r) => r.checked);
+    expect(checked?.closest("label")?.textContent).toBe("Claude");
+  });
+
+  it("picking a favorite only reports the choice — it never calls window.open", () => {
+    const open = vi.fn();
+    const onExternalChatFavoriteChange = vi.fn();
+    const originalOpen = window.open;
+    window.open = open;
+
+    render({
+      config: BASE_CONFIG,
+      onConfigChange: vi.fn(),
+      externalChatFavorite: null,
+      onExternalChatFavoriteChange,
+    });
+
+    const radios = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="radio"]'),
+    );
+    const claudeRadio = radios.find((r) => r.closest("label")?.textContent === "Claude");
+
+    // React fires onChange for radio/checkbox inputs off the native "click"
+    // event, not "change" — same reason the select/text-input tests above
+    // need their own event-type workarounds.
+    act(() => {
+      claudeRadio?.click();
+    });
+
+    expect(onExternalChatFavoriteChange).toHaveBeenCalledWith("claude");
+    expect(open).not.toHaveBeenCalled();
+    window.open = originalOpen;
+  });
+
+  it("picking None reports null", () => {
+    const onExternalChatFavoriteChange = vi.fn();
+    render({
+      config: BASE_CONFIG,
+      onConfigChange: vi.fn(),
+      externalChatFavorite: "groq",
+      onExternalChatFavoriteChange,
+    });
+
+    const radios = Array.from(
+      container.querySelectorAll<HTMLInputElement>('input[type="radio"]'),
+    );
+    const noneRadio = radios.find((r) => r.closest("label")?.textContent === "None");
+
+    act(() => {
+      noneRadio?.click();
+    });
+
+    expect(onExternalChatFavoriteChange).toHaveBeenCalledWith(null);
   });
 
   it("links to the default glossary URL, or a custom one when given", () => {
@@ -139,15 +197,7 @@ describe("ModelPicker", () => {
     const defaultLink = container.querySelector(".md-glossary-link") as HTMLAnchorElement;
     expect(defaultLink.href).toContain("docs/GLOSSARY.md");
 
-    act(() => {
-      root.render(
-        <ModelPicker
-          config={BASE_CONFIG}
-          onConfigChange={vi.fn()}
-          glossaryUrl="https://example.com/glossary"
-        />,
-      );
-    });
+    render({ config: BASE_CONFIG, onConfigChange: vi.fn(), glossaryUrl: "https://example.com/glossary" });
     const customLink = container.querySelector(".md-glossary-link") as HTMLAnchorElement;
     expect(customLink.href).toBe("https://example.com/glossary");
   });
