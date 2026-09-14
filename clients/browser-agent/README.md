@@ -3,8 +3,15 @@
 A browser-native, bring-your-own-key AI agent core. The client-side sibling
 to `model-dispatcher` for apps with **no backend** to run the Python gateway
 on: talks directly to Gemini, OpenAI, Anthropic, Groq, or a local Ollama from
-the browser, using whatever key the end user supplies. No vendor SDK, no
+the browser, using whatever key(s) the end user supplies. No vendor SDK, no
 server, nothing sent anywhere but the provider itself.
+
+`AgentConfig` is a **fallback list**, not a single selection: configure more
+than one provider (and more than one pooled key per provider), and
+`complete`/`streamComplete`/`streamChat` try each candidate in order,
+falling through to the next key or provider on failure instead of failing
+the whole request — the same idea as the Python core's fallback chain,
+running client-side.
 
 Extracted from four apps (StepByLearn, JobFlowTracker, KanDOne, HighFive)
 that had each independently built the same thing — one canonical provider
@@ -23,13 +30,17 @@ npm install @joka-7/modeldispatcher-browser-agent
 ## Usage
 
 ```ts
-import { loadConfig, complete, streamChat, PROVIDERS } from "@joka-7/modeldispatcher-browser-agent";
+import { loadConfig, complete, streamChat, PROVIDERS, MODEL_OPTIONS } from "@joka-7/modeldispatcher-browser-agent";
 
-// Reads aiProvider/aiApiKey/aiModel/ollamaUrl from localStorage by default;
-// pass a ConfigStorage + ConfigKeys to use your app's own key names.
+// Reads the whole fallback list from localStorage by default (one JSON
+// blob under "aiConfig"); pass a ConfigStorage + ConfigKeys to use your
+// app's own key name.
 const cfg = loadConfig();
+// cfg.providers: [{ provider: "gemini", model: "gemini-2.0-flash", apiKeys: ["AIza-..."] }, ...]
+// cfg.ollamaUrl: "http://localhost:11434"
 
-// One-shot, full text back:
+// One-shot, full text back — tries cfg.providers in order, and each
+// provider's own pooled keys in order, until one succeeds:
 const answer = await complete(cfg, "Summarise this in one sentence: ...");
 
 // One-shot, incremental text back:
@@ -44,8 +55,36 @@ await streamChat(cfg, uiMessages, {
 ```
 
 `PROVIDERS` is the canonical registry (name, default model, key placeholder,
-where to get a key) for rendering a settings picker — the same shape every
-app's `APIKeySettings`/`Settings` screen already builds by hand.
+where to get a key) and `MODEL_OPTIONS`/`modelOptionsFor(id)` a curated
+shortlist of current models per vendor — together enough to render a
+provider `<select>` and a model `<select>`, the same shape every app's
+`APIKeySettings`/`Settings` screen already builds by hand.
+
+### Fallback errors
+
+```ts
+import { NoProviderConfiguredError, AllProvidersExhaustedError } from "@joka-7/modeldispatcher-browser-agent";
+
+try {
+  await complete(cfg, prompt);
+} catch (err) {
+  if (err instanceof NoProviderConfiguredError) {
+    // cfg.providers has nothing usable — send the visitor to AI settings.
+  } else if (err instanceof AllProvidersExhaustedError) {
+    // Every configured provider/key was tried. err.attempts is
+    // [{ provider, error }, ...] for a detailed failure message.
+  } else {
+    throw err;
+  }
+}
+```
+
+A streaming call (`streamComplete`/`streamChat`) only falls back **before**
+the first chunk of a given candidate reaches `onChunk`. Once any text has
+streamed, a later failure on that same candidate is thrown immediately
+instead of silently retried on the next provider — the caller has already
+rendered a partial answer, and switching providers mid-stream would
+duplicate or contradict it rather than complete it.
 
 ## No-API-key escape hatch: `openExternalChat`
 
@@ -111,8 +150,9 @@ independent, unrelated choices.
 
 This package owns the generic "talk to a provider" plumbing: provider
 configs, request/response translation, SSE/NDJSON stream parsing, retry on
-429/5xx, timeout/abort handling, Ollama URL validation, and chat-history
-normalisation. It deliberately does **not** know about any app's actual
+429/5xx, cross-provider/cross-key fallback dispatch, timeout/abort handling,
+Ollama URL validation, and chat-history normalisation. It deliberately does
+**not** know about any app's actual
 prompts or business logic (job-search coaching, trip parsing, whatever) —
 that stays in each app, calling through this the same way
 `services/llm_model_dispatcher.py` in AppMyTrip calls through the Python
@@ -125,5 +165,5 @@ npm run typecheck
 npm test
 ```
 
-All 65 tests run against mocked `fetch`/`ReadableStream`/`window.open`/
+All 75 tests run against mocked `fetch`/`ReadableStream`/`window.open`/
 clipboard — no real network, no real API key needed.

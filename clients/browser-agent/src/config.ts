@@ -1,13 +1,14 @@
 /**
- * BYOK config persistence. Every app used `localStorage` directly under
- * slightly different key names — this keeps that pattern (no new storage
- * mechanism to migrate to) but makes the key names and the storage itself
- * both overridable, so each app can keep its own naming/legacy fallbacks
- * without forking the loader logic.
+ * BYOK config persistence: the whole `AgentConfig` (an ordered fallback list
+ * of providers, each with its own pooled keys, plus the shared Ollama URL)
+ * as one JSON blob under one storage key — simpler than one key per field
+ * now that the config is a list rather than a single flat selection, and
+ * the key name/storage itself stay overridable so an app can keep its own
+ * naming without forking the loader logic.
  */
 
 import { PROVIDERS, isKnownProvider } from "./registry.js";
-import type { AgentConfig, ProviderId } from "./types.js";
+import type { AgentConfig, ProviderCredential, ProviderId } from "./types.js";
 
 /** Minimal Web Storage shape — matches `localStorage`, injectable for tests
  * or for a non-browser host (e.g. a React Native AsyncStorage shim). */
@@ -18,21 +19,12 @@ export interface ConfigStorage {
 }
 
 export interface ConfigKeys {
-  provider: string;
-  apiKey: string;
-  model: string;
-  ollamaUrl: string;
-  /** Older/alternate localStorage keys to also check for apiKey, in order,
-   * if the primary key is unset — e.g. JobFlowTracker's pre-multi-provider
-   * `anthropicApiKey`. Never written to, only read as a fallback. */
-  legacyApiKeys?: string[];
+  /** Single key holding the whole config as JSON. */
+  config: string;
 }
 
 export const DEFAULT_CONFIG_KEYS: ConfigKeys = {
-  provider: "aiProvider",
-  apiKey: "aiApiKey",
-  model: "aiModel",
-  ollamaUrl: "ollamaUrl",
+  config: "aiConfig",
 };
 
 const DEFAULT_OLLAMA_URL = "http://localhost:11434";
@@ -48,52 +40,78 @@ export function resolveStorage(storage?: ConfigStorage): ConfigStorage {
   );
 }
 
-/** Read the active provider/key/model/ollamaUrl selection from storage. */
+function sanitizeCredential(raw: unknown): ProviderCredential | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const { provider, model, apiKeys } = raw as Record<string, unknown>;
+  if (typeof provider !== "string" || !isKnownProvider(provider)) return null;
+
+  const keys = Array.isArray(apiKeys)
+    ? apiKeys.filter((k): k is string => typeof k === "string" && k.trim().length > 0).map((k) => k.trim())
+    : [];
+  const resolvedModel = typeof model === "string" && model.trim() ? model.trim() : PROVIDERS[provider].defaultModel;
+
+  return { provider, model: resolvedModel, apiKeys: keys };
+}
+
+/** Read the configured provider fallback list + Ollama URL from storage.
+ * A missing, empty, or corrupt blob resolves to an empty provider list
+ * (nothing configured yet) rather than throwing — the same "still runs,
+ * just answers no-credential" posture the rest of this package uses. */
 export function loadConfig(
   storage?: ConfigStorage,
   keys: ConfigKeys = DEFAULT_CONFIG_KEYS,
 ): AgentConfig {
   const store = resolveStorage(storage);
-  const rawProvider = store.getItem(keys.provider) || "gemini";
-  const provider: ProviderId = isKnownProvider(rawProvider) ? rawProvider : "gemini";
+  const raw = store.getItem(keys.config);
+  if (!raw) return { providers: [], ollamaUrl: DEFAULT_OLLAMA_URL };
 
-  let apiKey = (store.getItem(keys.apiKey) || "").trim();
-  if (!apiKey) {
-    for (const legacyKey of keys.legacyApiKeys ?? []) {
-      apiKey = (store.getItem(legacyKey) || "").trim();
-      if (apiKey) break;
-    }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { providers: [], ollamaUrl: DEFAULT_OLLAMA_URL };
   }
+  if (typeof parsed !== "object" || parsed === null) return { providers: [], ollamaUrl: DEFAULT_OLLAMA_URL };
 
-  const model = (store.getItem(keys.model) || "").trim() || PROVIDERS[provider].defaultModel;
-  const ollamaUrl = (store.getItem(keys.ollamaUrl) || DEFAULT_OLLAMA_URL).trim();
+  const { providers, ollamaUrl } = parsed as Record<string, unknown>;
+  const sanitized = Array.isArray(providers)
+    ? providers.map(sanitizeCredential).filter((c): c is ProviderCredential => c !== null)
+    : [];
+  const resolvedOllamaUrl = typeof ollamaUrl === "string" && ollamaUrl.trim() ? ollamaUrl.trim() : DEFAULT_OLLAMA_URL;
 
-  return { provider, apiKey, model, ollamaUrl };
+  return { providers: sanitized, ollamaUrl: resolvedOllamaUrl };
 }
 
-/** Persist a partial config update; only the given fields are written. */
-export function saveConfig(
-  update: Partial<AgentConfig>,
-  storage?: ConfigStorage,
-  keys: ConfigKeys = DEFAULT_CONFIG_KEYS,
-): void {
+/** Persist the full config, replacing whatever was stored before — callers
+ * (e.g. `ModelPicker`) hold the authoritative in-memory list and pass the
+ * whole thing on every change, the same controlled-component pattern the
+ * React layer uses. */
+export function saveConfig(config: AgentConfig, storage?: ConfigStorage, keys: ConfigKeys = DEFAULT_CONFIG_KEYS): void {
   const store = resolveStorage(storage);
-  if (update.provider !== undefined) store.setItem(keys.provider, update.provider);
-  if (update.apiKey !== undefined) store.setItem(keys.apiKey, update.apiKey.trim());
-  if (update.model !== undefined) store.setItem(keys.model, update.model.trim());
-  if (update.ollamaUrl !== undefined) store.setItem(keys.ollamaUrl, update.ollamaUrl.trim());
+  const cleaned: AgentConfig = {
+    providers: config.providers.map((cred) => ({
+      provider: cred.provider,
+      model: cred.model.trim(),
+      apiKeys: cred.apiKeys.map((k) => k.trim()).filter((k) => k.length > 0),
+    })),
+    ollamaUrl: config.ollamaUrl.trim() || DEFAULT_OLLAMA_URL,
+  };
+  store.setItem(keys.config, JSON.stringify(cleaned));
 }
 
 export function clearConfig(storage?: ConfigStorage, keys: ConfigKeys = DEFAULT_CONFIG_KEYS): void {
-  const store = resolveStorage(storage);
-  store.removeItem(keys.provider);
-  store.removeItem(keys.apiKey);
-  store.removeItem(keys.model);
-  store.removeItem(keys.ollamaUrl);
+  resolveStorage(storage).removeItem(keys.config);
 }
 
-/** Whether `cfg` has everything needed to actually make a request. */
+/** Whether `cfg` has at least one usable candidate to dispatch to — Ollama
+ * (no key needed) or any vendor with at least one pooled key. Mirrors
+ * `candidatesOf` in `agent.ts` without needing to import its internals. */
 export function isConfigReady(cfg: AgentConfig): boolean {
-  if (cfg.provider === "ollama") return true;
-  return cfg.apiKey.length > 0;
+  return cfg.providers.some((cred) => cred.provider === "ollama" || cred.apiKeys.length > 0);
+}
+
+/** True when `provider` isn't already in `cfg.providers` — for an "Add
+ * provider" control to only offer vendors not yet configured. */
+export function isProviderConfigured(cfg: AgentConfig, provider: ProviderId): boolean {
+  return cfg.providers.some((cred) => cred.provider === provider);
 }

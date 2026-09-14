@@ -4,9 +4,11 @@ Two React components for the AI settings screen every one of your apps
 needs and has been building separately — split along a line that matters:
 **picking a preference is not the same thing as acting on it.**
 
-- **`ModelPicker`** — a pure settings screen. Provider/model/key, or saving
-  a favorite free AI app for later. Nothing in it ever navigates — clicking
-  an option in Settings should never itself open a new tab.
+- **`ModelPicker`** — a pure settings screen. Add one or more providers, a
+  model picked from a curated list per provider, and one or more pooled
+  API keys per provider — plus saving a favorite free AI app for later.
+  Nothing in it ever navigates — clicking an option in Settings should
+  never itself open a new tab.
 - **`AskExternallyButton`** — the action that actually opens the saved
   favorite. It belongs wherever the user is composing a question (next to
   the prompt box), not on the settings screen — so clicking it is an
@@ -15,13 +17,14 @@ needs and has been building separately — split along a line that matters:
 
 Built on top of [`@joka-7/modeldispatcher-browser-agent`](../browser-agent) —
 these are purely the visual layer over that package's provider registry,
-favorite-preference storage, and `openExternalChat` escape hatch, so the two
-stay in lockstep.
+model shortlist, favorite-preference storage, and fallback dispatch, so the
+two stay in lockstep.
 
-**`ModelPicker`** — provider/model/key, plus saving a favorite. Nothing
-below opens anything:
+**`ModelPicker`** — add providers, each with a model picked from a list and
+one or more pooled keys, plus saving a favorite. Nothing below opens
+anything:
 
-![ModelPicker settings screen: a provider dropdown set to Anthropic Claude, a model field, a masked API key field with a "Get a key" link, and a dashed box offering to save Claude as a favorite free AI app via radio buttons, with a note that picking one never opens anything](./screenshots/settings.png)
+![ModelPicker settings screen showing two configured provider cards — Anthropic Claude with a model dropdown and two pooled API keys, and Groq marked with a free badge and one key — an "Add provider" row below them, and a dashed box for saving Claude as a favorite free AI app, with a note that picking one never opens anything](./screenshots/settings.png)
 
 **`AskExternallyButton`** — rendered separately, wherever a question is
 actually being asked. This is the only thing that opens a tab:
@@ -57,11 +60,15 @@ import {
   saveConfig,
   loadExternalChatFavorite,
   saveExternalChatFavorite,
+  complete,
 } from "@joka-7/modeldispatcher-browser-agent";
 import { ModelPicker, AskExternallyButton } from "@joka-7/modeldispatcher-react-ui";
 import "@joka-7/modeldispatcher-react-ui/styles.css";
 
-// Settings screen — nothing here ever navigates.
+// Settings screen — nothing here ever navigates. config.providers is a
+// fallback LIST: add Gemini, Groq, Anthropic, whatever, each with its own
+// pooled key(s) — complete()/streamChat() from browser-agent try them in
+// order automatically.
 function AiSettings() {
   const [config, setConfig] = useState(loadConfig);
   const [favorite, setFavorite] = useState(loadExternalChatFavorite);
@@ -93,6 +100,12 @@ function PromptBar({ question }: { question: string }) {
     </div>
   );
 }
+
+// Actually dispatching a request elsewhere in the app — no picker UI
+// involved, just the config it produced:
+async function ask(question: string) {
+  return complete(loadConfig(), question); // tries every configured provider/key in order
+}
 ```
 
 Both components are controlled and stateless about persistence, the same
@@ -105,11 +118,17 @@ or your own store happens at the call site.
 
 | Prop | Type | Required | Purpose |
 | --- | --- | --- | --- |
-| `config` | `AgentConfig` | yes | The active provider/key/model/Ollama-URL selection. |
-| `onConfigChange` | `(config: AgentConfig) => void` | yes | Called with the full updated config on any change. |
+| `config` | `AgentConfig` | yes | The active fallback list (`{ providers: ProviderCredential[], ollamaUrl }`) — see [`browser-agent`](../browser-agent) for the shape. |
+| `onConfigChange` | `(config: AgentConfig) => void` | yes | Called with the full updated config on any add/remove/edit. |
 | `externalChatFavorite` | `ExternalChatProviderId \| null` | yes | The saved "ask externally" favorite, or `null`. |
 | `onExternalChatFavoriteChange` | `(favorite: ExternalChatProviderId \| null) => void` | yes | Called when the user picks or clears a favorite. Persist it yourself — this only reports the choice. |
 | `glossaryUrl` | `string` | no | Where "New to AI agents?" links. Defaults to this repo's [`docs/GLOSSARY.md`](../../docs/GLOSSARY.md). |
+
+Each provider card lets the user pick a model from `MODEL_OPTIONS` (a
+curated shortlist per vendor, from `browser-agent`), add/remove pooled API
+keys (or a single URL field for Ollama, which needs none), and remove the
+whole provider. An "Add provider" row below the cards offers only the
+vendors not already configured.
 
 ### `AskExternallyButton` props
 

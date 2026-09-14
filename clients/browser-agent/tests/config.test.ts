@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { clearConfig, isConfigReady, loadConfig, saveConfig, type ConfigStorage } from "../src/config.js";
+import {
+  clearConfig,
+  isConfigReady,
+  isProviderConfigured,
+  loadConfig,
+  saveConfig,
+  type ConfigStorage,
+} from "../src/config.js";
+import type { AgentConfig } from "../src/types.js";
 
 function memoryStorage(initial: Record<string, string> = {}): ConfigStorage {
   const data = new Map(Object.entries(initial));
@@ -12,64 +20,95 @@ function memoryStorage(initial: Record<string, string> = {}): ConfigStorage {
 }
 
 describe("loadConfig", () => {
-  it("defaults to gemini with an empty key when nothing is stored", () => {
+  it("returns an empty provider list with the default Ollama URL when nothing is stored", () => {
     const cfg = loadConfig(memoryStorage());
-    expect(cfg.provider).toBe("gemini");
-    expect(cfg.apiKey).toBe("");
-    expect(cfg.model).toBe("gemini-2.0-flash");
+    expect(cfg).toEqual({ providers: [], ollamaUrl: "http://localhost:11434" });
   });
 
-  it("falls back to gemini for an unknown stored provider", () => {
-    const cfg = loadConfig(memoryStorage({ aiProvider: "not-a-real-provider" }));
-    expect(cfg.provider).toBe("gemini");
+  it("returns an empty config for corrupt JSON rather than throwing", () => {
+    const cfg = loadConfig(memoryStorage({ aiConfig: "{not json" }));
+    expect(cfg.providers).toEqual([]);
   });
 
-  it("reads the stored provider/key/model", () => {
-    const cfg = loadConfig(memoryStorage({ aiProvider: "anthropic", aiApiKey: "sk-ant-x", aiModel: "claude-x" }));
-    expect(cfg).toEqual({
-      provider: "anthropic",
-      apiKey: "sk-ant-x",
-      model: "claude-x",
+  it("reads back a stored multi-provider config", () => {
+    const stored: AgentConfig = {
+      providers: [
+        { provider: "anthropic", model: "claude-haiku-4-5", apiKeys: ["sk-ant-a", "sk-ant-b"] },
+        { provider: "ollama", model: "llama3.2", apiKeys: [] },
+      ],
       ollamaUrl: "http://localhost:11434",
-    });
+    };
+    const cfg = loadConfig(memoryStorage({ aiConfig: JSON.stringify(stored) }));
+    expect(cfg).toEqual(stored);
   });
 
-  it("falls back through legacyApiKeys in order when the primary key is unset", () => {
-    const storage = memoryStorage({ oldKey1: "", oldKey2: "sk-legacy" });
-    const cfg = loadConfig(storage, {
-      provider: "aiProvider",
-      apiKey: "aiApiKey",
-      model: "aiModel",
-      ollamaUrl: "ollamaUrl",
-      legacyApiKeys: ["oldKey1", "oldKey2"],
-    });
-    expect(cfg.apiKey).toBe("sk-legacy");
+  it("drops an entry with an unrecognised provider id rather than failing the whole load", () => {
+    const raw = {
+      providers: [
+        { provider: "not-a-real-vendor", model: "x", apiKeys: ["k"] },
+        { provider: "groq", model: "llama-3.1-8b-instant", apiKeys: ["gsk-x"] },
+      ],
+      ollamaUrl: "http://localhost:11434",
+    };
+    const cfg = loadConfig(memoryStorage({ aiConfig: JSON.stringify(raw) }));
+    expect(cfg.providers).toEqual([{ provider: "groq", model: "llama-3.1-8b-instant", apiKeys: ["gsk-x"] }]);
+  });
+
+  it("falls back to the provider's default model when the stored model is missing", () => {
+    const raw = { providers: [{ provider: "gemini", apiKeys: ["k"] }], ollamaUrl: "" };
+    const cfg = loadConfig(memoryStorage({ aiConfig: JSON.stringify(raw) }));
+    expect(cfg.providers[0]?.model).toBe("gemini-2.0-flash");
   });
 });
 
 describe("saveConfig / clearConfig", () => {
-  it("writes only the given fields, trimmed", () => {
+  it("persists the full config as JSON, trimming keys and dropping blanks", () => {
     const storage = memoryStorage();
-    saveConfig({ apiKey: "  sk-x  " }, storage);
-    expect(storage.getItem("aiApiKey")).toBe("sk-x");
-    expect(storage.getItem("aiProvider")).toBeNull();
+    saveConfig(
+      { providers: [{ provider: "openai", model: " gpt-4o-mini ", apiKeys: ["  sk-a  ", "", "sk-b"] }], ollamaUrl: "" },
+      storage,
+    );
+    expect(JSON.parse(storage.getItem("aiConfig")!)).toEqual({
+      providers: [{ provider: "openai", model: "gpt-4o-mini", apiKeys: ["sk-a", "sk-b"] }],
+      ollamaUrl: "http://localhost:11434",
+    });
   });
 
-  it("clearConfig removes every managed key", () => {
-    const storage = memoryStorage({ aiProvider: "openai", aiApiKey: "sk-x", aiModel: "m", ollamaUrl: "u" });
+  it("clearConfig removes the stored blob", () => {
+    const storage = memoryStorage({ aiConfig: "{}" });
     clearConfig(storage);
-    expect(storage.getItem("aiProvider")).toBeNull();
-    expect(storage.getItem("aiApiKey")).toBeNull();
+    expect(storage.getItem("aiConfig")).toBeNull();
   });
 });
 
 describe("isConfigReady", () => {
-  it("ollama is always ready regardless of key", () => {
-    expect(isConfigReady({ provider: "ollama", apiKey: "", model: "m", ollamaUrl: "u" })).toBe(true);
+  it("false with no providers configured", () => {
+    expect(isConfigReady({ providers: [], ollamaUrl: "" })).toBe(false);
   });
 
-  it("every other provider needs a non-empty key", () => {
-    expect(isConfigReady({ provider: "openai", apiKey: "", model: "m", ollamaUrl: "u" })).toBe(false);
-    expect(isConfigReady({ provider: "openai", apiKey: "sk-x", model: "m", ollamaUrl: "u" })).toBe(true);
+  it("false when the only configured provider has no keys", () => {
+    expect(isConfigReady({ providers: [{ provider: "openai", model: "m", apiKeys: [] }], ollamaUrl: "" })).toBe(false);
+  });
+
+  it("true when ollama is configured, regardless of keys", () => {
+    expect(isConfigReady({ providers: [{ provider: "ollama", model: "m", apiKeys: [] }], ollamaUrl: "u" })).toBe(true);
+  });
+
+  it("true when at least one configured provider has a key", () => {
+    expect(isConfigReady({ providers: [{ provider: "openai", model: "m", apiKeys: ["sk-x"] }], ollamaUrl: "" })).toBe(
+      true,
+    );
+  });
+});
+
+describe("isProviderConfigured", () => {
+  const cfg: AgentConfig = { providers: [{ provider: "groq", model: "m", apiKeys: ["k"] }], ollamaUrl: "" };
+
+  it("true for a provider already in the list", () => {
+    expect(isProviderConfigured(cfg, "groq")).toBe(true);
+  });
+
+  it("false for a provider not yet added", () => {
+    expect(isProviderConfigured(cfg, "openai")).toBe(false);
   });
 });

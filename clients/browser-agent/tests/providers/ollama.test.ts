@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { completeOllama, streamOllama } from "../../src/providers/ollama.js";
-import type { AgentConfig } from "../../src/types.js";
+import type { ProviderCallConfig } from "../../src/types.js";
 
-const cfg: AgentConfig = { provider: "ollama", apiKey: "", model: "llama3.2", ollamaUrl: "http://localhost:11434" };
+const cfg: ProviderCallConfig = { provider: "ollama", apiKey: "", model: "llama3.2", ollamaUrl: "http://localhost:11434" };
 
 describe("completeOllama", () => {
   const originalFetch = globalThis.fetch;
@@ -26,7 +26,7 @@ describe("completeOllama", () => {
   it("rejects a non-HTTPS remote ollamaUrl before ever calling fetch", async () => {
     const fetchMock = vi.fn();
     globalThis.fetch = fetchMock as unknown as typeof fetch;
-    const remote: AgentConfig = { ...cfg, ollamaUrl: "http://example.com:11434" };
+    const remote: ProviderCallConfig = { ...cfg, ollamaUrl: "http://example.com:11434" };
 
     await expect(completeOllama(remote, [{ role: "user", content: "hi" }])).rejects.toThrow(/HTTPS/);
     expect(fetchMock).not.toHaveBeenCalled();

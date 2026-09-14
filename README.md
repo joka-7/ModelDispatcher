@@ -46,14 +46,16 @@ GitHub Packages — see [`clients/typescript`](./clients/typescript). It talks t
 For an app with **no backend at all** — a pure browser app doing
 bring-your-own-key calls straight to a provider — see
 [`clients/browser-agent`](./clients/browser-agent)
-(`@joka-7/modeldispatcher-browser-agent`) instead: the same multi-provider
-idea (Gemini/OpenAI/Anthropic/Groq/Ollama), running client-side with no
-server and no vendor SDK required.
+(`@joka-7/modeldispatcher-browser-agent`) instead: the same multi-provider,
+multi-key fallback idea (Gemini/OpenAI/Anthropic/Groq/Ollama, several pooled
+keys per vendor), running client-side with no server and no vendor SDK
+required.
 
 Building the settings screen for that in React? See
 [`clients/react-ui`](./clients/react-ui)
-(`@joka-7/modeldispatcher-react-ui`) for `<ModelPicker>` — provider/model
-select, key input, saving a favorite free AI app, and a link to
+(`@joka-7/modeldispatcher-react-ui`) for `<ModelPicker>` — add one or more
+providers, a model picked from a curated list per provider, pooled API keys,
+saving a favorite free AI app, and a link to
 [`docs/GLOSSARY.md`](./docs/GLOSSARY.md) for first-time users, with nothing
 in it that navigates — plus `<AskExternallyButton>`, the separate action
 that actually opens that favorite from wherever the user is asking a

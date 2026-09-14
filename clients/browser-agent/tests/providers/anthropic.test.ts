@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { completeAnthropic, streamAnthropic } from "../../src/providers/anthropic.js";
-import type { AgentConfig } from "../../src/types.js";
+import type { ProviderCallConfig } from "../../src/types.js";
 
-const cfg: AgentConfig = { provider: "anthropic", apiKey: "sk-ant-x", model: "claude-haiku-4-5", ollamaUrl: "" };
+const cfg: ProviderCallConfig = { provider: "anthropic", apiKey: "sk-ant-x", model: "claude-haiku-4-5", ollamaUrl: "" };
 
 describe("completeAnthropic", () => {
   const originalFetch = globalThis.fetch;

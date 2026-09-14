@@ -22,12 +22,41 @@ export interface ProviderInfo {
   readonly infoText: string;
 }
 
-/** The active provider/key/model selection — one at a time, BYOK. */
-export interface AgentConfig {
+/**
+ * One configured vendor: its model, and the key(s) pooled for it. More than
+ * one key is tried in order (e.g. a personal key and a team key) before
+ * this vendor is considered exhausted and the dispatcher moves to the next
+ * configured provider. Ignored for `provider: "ollama"`, which authenticates
+ * via `AgentConfig.ollamaUrl` instead of a key.
+ */
+export interface ProviderCredential {
   readonly provider: ProviderId;
-  readonly apiKey: string;
   readonly model: string;
-  /** Only meaningful when provider is "ollama"; ignored otherwise. */
+  readonly apiKeys: readonly string[];
+}
+
+/**
+ * The full BYOK configuration: an ordered fallback list of vendors (each
+ * with its own pooled keys) to try in turn, plus Ollama's local server URL
+ * (shared across the whole config — there's only one local Ollama, not one
+ * per fallback slot). `dispatch`/`complete`/`streamComplete` walk this list
+ * candidate by candidate, mirroring the Python core's fallback chain.
+ */
+export interface AgentConfig {
+  readonly providers: readonly ProviderCredential[];
+  readonly ollamaUrl: string;
+}
+
+/**
+ * One concrete attempt: a specific vendor, model, and (for keyed vendors) a
+ * single already-resolved key — what an individual `providers/*` module
+ * needs to make one call. Distinct from `AgentConfig`, which holds the whole
+ * configured fallback list before the dispatch loop has picked a candidate.
+ */
+export interface ProviderCallConfig {
+  readonly provider: ProviderId;
+  readonly model: string;
+  readonly apiKey: string;
   readonly ollamaUrl: string;
 }
 

@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { completeGemini, streamGemini } from "../../src/providers/gemini.js";
-import type { AgentConfig } from "../../src/types.js";
+import type { ProviderCallConfig } from "../../src/types.js";
 
-const cfg: AgentConfig = { provider: "gemini", apiKey: "AIza-x", model: "gemini-2.0-flash", ollamaUrl: "" };
+const cfg: ProviderCallConfig = { provider: "gemini", apiKey: "AIza-x", model: "gemini-2.0-flash", ollamaUrl: "" };
 
 describe("completeGemini", () => {
   const originalFetch = globalThis.fetch;
