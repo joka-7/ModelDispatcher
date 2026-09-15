@@ -173,7 +173,81 @@ Vercel Python Function reference wiring both sides behind Firebase App Check
 + Auth, with per-tenant quota isolation from a verified Firebase Auth `uid`.
 See that folder's own README for setup.
 
-## 4. Versioning across multiple consuming apps
+## 4. No-backend browser apps — `browser-agent` + `react-ui` (BYOK)
+
+If an app has no backend at all — a static site, or a frontend that simply
+doesn't want to run the Python gateway — skip §1/§2 entirely and call
+providers straight from the browser with the caller's own key:
+
+```bash
+npm install @joka-7/modeldispatcher-browser-agent @joka-7/modeldispatcher-react-ui
+```
+
+```tsx
+import { useState } from "react";
+import { loadConfig, saveConfig, complete } from "@joka-7/modeldispatcher-browser-agent";
+import { ModelPicker } from "@joka-7/modeldispatcher-react-ui";
+import "@joka-7/modeldispatcher-react-ui/styles.css";
+
+function AiSettings() {
+  const [config, setConfig] = useState(loadConfig);
+  return (
+    <ModelPicker
+      config={config}
+      onConfigChange={(next) => { setConfig(next); saveConfig(next); }}
+      /* ...externalChatFavorite props, see clients/react-ui/README.md... */
+    />
+  );
+}
+
+async function ask(question: string) {
+  return complete(loadConfig(), question); // tries every configured provider/key in order
+}
+```
+
+`ModelPicker` is the settings screen (add providers, models, pooled keys —
+never navigates); `AskExternallyButton` is the separate "ask a favorite free
+app instead" action. Full props and the settings/action split rationale:
+[`clients/react-ui/README.md`](../clients/react-ui/README.md).
+
+### Making the dispatcher optional per app
+
+Rolling this into an app that already has its own AI settings screen and its
+own calling code doesn't have to be all-or-nothing. Keep the old code in
+place and gate both pieces independently behind two flags, defaulting to
+**on** so opting out is a deliberate, visible choice per app:
+
+```ts
+// config/features.ts — read whatever env var mechanism this app already uses
+export const FEATURES = {
+  // Render <ModelPicker>/<AskExternallyButton> vs. this app's existing settings UI.
+  useModelDispatcherUI: import.meta.env.VITE_USE_MODEL_DISPATCHER_UI !== "false",
+  // Route AI calls through browser-agent's complete()/streamComplete() (with
+  // its multi-provider/multi-key fallback) vs. this app's existing call path.
+  useModelDispatcher: import.meta.env.VITE_USE_MODEL_DISPATCHER !== "false",
+} as const;
+```
+
+```tsx
+function AiSettingsScreen() {
+  return FEATURES.useModelDispatcherUI ? <ModelPicker {...props} /> : <LegacyAiSettings />;
+}
+
+async function askAi(question: string) {
+  return FEATURES.useModelDispatcher ? complete(loadConfig(), question) : legacyAskAi(question);
+}
+```
+
+Two independent flags, not one, because they answer different questions: the
+UI flag controls what the settings screen renders, the dispatch flag
+controls what actually makes the network call — an app can adopt the shared
+UI while still routing through its own backend, or vice versa, while it
+migrates. Swap `import.meta.env.VITE_*` for that app's own convention
+(`process.env.NEXT_PUBLIC_*`, `process.env.REACT_APP_*`, …); the flag names
+and the "default true, opt out per app" shape are what's worth keeping
+consistent across apps, not the env var mechanism itself.
+
+## 5. Versioning across multiple consuming apps
 
 Once you've got more than one app depending on ModelDispatcher, pin every
 consumer to the same tagged version and bump them together when you cut a
