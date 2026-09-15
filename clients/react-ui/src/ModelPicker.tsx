@@ -21,7 +21,7 @@ import {
 } from "@joka-7/modeldispatcher-browser-agent";
 
 const DEFAULT_GLOSSARY_URL =
-  "https://github.com/joka-7/ModelDispatcher/blob/main/docs/GLOSSARY.md";
+  "https://cdn.jsdelivr.net/gh/joka-7/ModelDispatcher@main/docs/ai-glossary.html";
 
 export interface ModelPickerProps {
   /** The active BYOK selection. Controlled — this component never mutates it. */

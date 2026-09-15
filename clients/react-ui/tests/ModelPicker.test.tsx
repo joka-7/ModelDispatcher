@@ -137,7 +137,7 @@ describe("ModelPicker", () => {
   it("links to the default glossary URL, or a custom one when given", () => {
     render({ config: BASE_CONFIG, onConfigChange: vi.fn() });
     const defaultLink = container.querySelector(".md-glossary-link") as HTMLAnchorElement;
-    expect(defaultLink.href).toContain("docs/GLOSSARY.md");
+    expect(defaultLink.href).toContain("docs/ai-glossary.html");
 
     act(() => {
       root.render(

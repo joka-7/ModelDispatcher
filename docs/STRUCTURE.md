@@ -12,7 +12,8 @@ ModelDispatcher/
 │   │   ├── ci.yml
 │   │   ├── release.yml
 │   │   └── security.yml
-│   └── copilot-instructions.md           # Copilot's copy of AGENTS.md (generated)
+│   ├── copilot-instructions.md           # Copilot's copy of AGENTS.md (generated)
+│   └── dependabot.yml
 ├── clients/                              # Non-Python integration layers, documented in ARCHITECTURE.md's…
 │   ├── browser-agent/                    # Browser-native TypeScript client (no server) — see its own README.md
 │   │   ├── src/
@@ -106,7 +107,8 @@ ModelDispatcher/
 │   ├── HLD.md                            # High-Level Design — kept current, narrower and wins over ARCHITECTURE.md…
 │   ├── LLD.md                            # Low-Level Design — kept current, narrower and wins over ARCHITECTURE.md where…
 │   ├── STRUCTURE.md                      # Repository structure
-│   └── USAGE.md                          # Usage guide
+│   ├── USAGE.md                          # Usage guide
+│   └── ai-glossary.html                  # Interactive EN/FR/HE glossary site — ModelPicker's default glossaryUrl
 ├── examples/
 │   └── basic_agent.py                    # Minimal end-to-end usage example
 ├── src/

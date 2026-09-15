@@ -1,6 +1,6 @@
 {
   "name": "@joka-7/modeldispatcher-react-ui",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "One React model/agent picker component for every app: provider + model select, BYOK key input, the no-key 'try it elsewhere' escape hatch, and a beginner's link — so the AI settings screen looks the same everywhere instead of each app hand-rolling its own.",
   "license": "MIT",
   "type": "module",
