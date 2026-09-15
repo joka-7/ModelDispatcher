@@ -173,7 +173,87 @@ Vercel Python Function reference wiring both sides behind Firebase App Check
 + Auth, with per-tenant quota isolation from a verified Firebase Auth `uid`.
 See that folder's own README for setup.
 
-## 4. Versioning across multiple consuming apps
+## 4. No-backend browser apps — `browser-agent` + `react-ui` (BYOK)
+
+If an app has no backend at all — a static site, or a frontend that simply
+doesn't want to run the Python gateway — skip §1/§2 entirely and call
+providers straight from the browser with the caller's own key:
+
+```bash
+npm install @joka-7/modeldispatcher-browser-agent @joka-7/modeldispatcher-react-ui
+```
+
+```tsx
+import { useState } from "react";
+import { loadConfig, saveConfig, complete } from "@joka-7/modeldispatcher-browser-agent";
+import { ModelPicker } from "@joka-7/modeldispatcher-react-ui";
+import "@joka-7/modeldispatcher-react-ui/styles.css";
+
+function AiSettings() {
+  const [config, setConfig] = useState(loadConfig);
+  return (
+    <ModelPicker
+      config={config}
+      onConfigChange={(next) => { setConfig(next); saveConfig(next); }}
+      /* ...externalChatFavorite props, see clients/react-ui/README.md... */
+    />
+  );
+}
+
+async function ask(question: string) {
+  return complete(loadConfig(), question); // tries every configured provider/key in order
+}
+```
+
+`ModelPicker` is the settings screen (add providers, models, pooled keys —
+never navigates); `AskExternallyButton` is the separate "ask a favorite free
+app instead" action. Full props and the settings/action split rationale:
+[`clients/react-ui/README.md`](../clients/react-ui/README.md).
+
+### Making the dispatcher optional per app
+
+Rolling this into an app that already has its own AI settings screen and its
+own calling code doesn't have to be all-or-nothing. `resolveDispatcherFeatures`
+is the framework's own answer to "on or off, and who decides" — a developer/
+deploy-time config, never a switch an end user sees:
+
+```ts
+// modeldispatcher.config.ts — your app's own config module, not exported to users
+import { resolveDispatcherFeatures } from "@joka-7/modeldispatcher-browser-agent";
+
+export const dispatcherFeatures = resolveDispatcherFeatures({
+  // Render <ModelPicker>/<AskExternallyButton> vs. this app's existing settings UI.
+  ui: import.meta.env.VITE_MODEL_DISPATCHER_UI !== "false",
+  // Route AI calls through complete()/streamComplete() (with its
+  // multi-provider/multi-key fallback) vs. this app's existing call path.
+  dispatch: import.meta.env.VITE_MODEL_DISPATCHER_DISPATCH !== "false",
+});
+```
+
+```tsx
+function AiSettingsScreen() {
+  return dispatcherFeatures.ui ? <ModelPicker {...props} /> : <LegacyAiSettings />;
+}
+
+async function askAi(question: string) {
+  return dispatcherFeatures.dispatch ? complete(loadConfig(), question) : legacyAskAi(question);
+}
+```
+
+Two independent flags, not one, because they answer different questions: `ui`
+controls what the settings screen renders, `dispatch` controls what actually
+makes the network call — an app can adopt the shared UI while still routing
+through its own backend, or vice versa, while it migrates. Both default to
+`true` (calling `resolveDispatcherFeatures()` with no overrides turns
+everything on), so an app opts *out* per feature rather than opting in from a
+cold start. `resolveDispatcherFeatures` never reads environment variables
+itself — every bundler exposes them differently
+(`import.meta.env.VITE_*`, `process.env.NEXT_PUBLIC_*`,
+`process.env.REACT_APP_*`, …) — so each app's own config module resolves its
+own env var and passes the boolean in; the flag names and shapes are what's
+worth keeping consistent across apps, not the env var mechanism itself.
+
+## 5. Versioning across multiple consuming apps
 
 Once you've got more than one app depending on ModelDispatcher, pin every
 consumer to the same tagged version and bump them together when you cut a

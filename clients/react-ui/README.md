@@ -65,7 +65,7 @@ form library — whatever the app already uses.
 | `onConfigChange` | `(config: AgentConfig) => void` | yes | Called with the full updated config on any change. |
 | `question` | `string` | no | Current prompt, carried into "try it elsewhere" so the user's question isn't lost when they switch to a free chat product. |
 | `onExternalChat` | `(result: OpenExternalChatResult) => void` | no | Called after a "try it elsewhere" click opens a tab — e.g. to show your own toast. |
-| `glossaryUrl` | `string` | no | Where "New to AI agents?" links. Defaults to this repo's [`docs/GLOSSARY.md`](../../docs/GLOSSARY.md). |
+| `glossaryUrl` | `string` | no | Where "New to AI agents?" links. Defaults to this repo's interactive, trilingual [`docs/ai-glossary.html`](../../docs/ai-glossary.html). |
 | `externalChatDeps` | `OpenExternalChatDeps` | no | Injected `window.open`/clipboard, for tests or a non-browser host. |
 
 ## What's in scope, what isn't

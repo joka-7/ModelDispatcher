@@ -54,9 +54,15 @@ Building the settings screen for that in React? See
 [`clients/react-ui`](./clients/react-ui)
 (`@joka-7/modeldispatcher-react-ui`) for one `<ModelPicker>` component —
 provider/model select, key input, the no-key "try it elsewhere" escape
-hatch, and a link to [`docs/GLOSSARY.md`](./docs/GLOSSARY.md) for
-first-time users — so every app renders the same picker instead of each
-one hand-building its own.
+hatch, and a link to the interactive
+[`docs/ai-glossary.html`](./docs/ai-glossary.html) for first-time users — so
+every app renders the same picker instead of each one hand-building its own.
+
+Adopting either isn't all-or-nothing: `resolveDispatcherFeatures` from
+`browser-agent` gives each app's own developer — never the end user — two
+flags (`ui`, `dispatch`) to opt out per app during rollout instead of
+switching everything on at once. See
+[`docs/USAGE.md`](./docs/USAGE.md#4-no-backend-browser-apps--browser-agent--react-ui-byok).
 
 ## Quickstart
 

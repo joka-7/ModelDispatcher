@@ -20,6 +20,8 @@ export type { ConfigKeys, ConfigStorage } from "./config.js";
 export { DEFAULT_TIMEOUT_MS, describeHttpError, validateOllamaUrl } from "./http.js";
 export { EXTERNAL_CHAT_PROVIDERS, openExternalChat } from "./externalChat.js";
 export type { OpenExternalChatDeps, OpenExternalChatResult } from "./externalChat.js";
+export { DEFAULT_DISPATCHER_FEATURES, resolveDispatcherFeatures } from "./features.js";
+export type { DispatcherFeatureFlags } from "./features.js";
 export { buildMessages } from "./messages.js";
 export type { BuildMessagesOptions } from "./messages.js";
 export { isKnownProvider, PROVIDERS } from "./registry.js";
