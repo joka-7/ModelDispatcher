@@ -213,39 +213,45 @@ app instead" action. Full props and the settings/action split rationale:
 ### Making the dispatcher optional per app
 
 Rolling this into an app that already has its own AI settings screen and its
-own calling code doesn't have to be all-or-nothing. Keep the old code in
-place and gate both pieces independently behind two flags, defaulting to
-**on** so opting out is a deliberate, visible choice per app:
+own calling code doesn't have to be all-or-nothing. `resolveDispatcherFeatures`
+is the framework's own answer to "on or off, and who decides" — a developer/
+deploy-time config, never a switch an end user sees:
 
 ```ts
-// config/features.ts — read whatever env var mechanism this app already uses
-export const FEATURES = {
+// modeldispatcher.config.ts — your app's own config module, not exported to users
+import { resolveDispatcherFeatures } from "@joka-7/modeldispatcher-browser-agent";
+
+export const dispatcherFeatures = resolveDispatcherFeatures({
   // Render <ModelPicker>/<AskExternallyButton> vs. this app's existing settings UI.
-  useModelDispatcherUI: import.meta.env.VITE_USE_MODEL_DISPATCHER_UI !== "false",
-  // Route AI calls through browser-agent's complete()/streamComplete() (with
-  // its multi-provider/multi-key fallback) vs. this app's existing call path.
-  useModelDispatcher: import.meta.env.VITE_USE_MODEL_DISPATCHER !== "false",
-} as const;
+  ui: import.meta.env.VITE_MODEL_DISPATCHER_UI !== "false",
+  // Route AI calls through complete()/streamComplete() (with its
+  // multi-provider/multi-key fallback) vs. this app's existing call path.
+  dispatch: import.meta.env.VITE_MODEL_DISPATCHER_DISPATCH !== "false",
+});
 ```
 
 ```tsx
 function AiSettingsScreen() {
-  return FEATURES.useModelDispatcherUI ? <ModelPicker {...props} /> : <LegacyAiSettings />;
+  return dispatcherFeatures.ui ? <ModelPicker {...props} /> : <LegacyAiSettings />;
 }
 
 async function askAi(question: string) {
-  return FEATURES.useModelDispatcher ? complete(loadConfig(), question) : legacyAskAi(question);
+  return dispatcherFeatures.dispatch ? complete(loadConfig(), question) : legacyAskAi(question);
 }
 ```
 
-Two independent flags, not one, because they answer different questions: the
-UI flag controls what the settings screen renders, the dispatch flag
-controls what actually makes the network call — an app can adopt the shared
-UI while still routing through its own backend, or vice versa, while it
-migrates. Swap `import.meta.env.VITE_*` for that app's own convention
-(`process.env.NEXT_PUBLIC_*`, `process.env.REACT_APP_*`, …); the flag names
-and the "default true, opt out per app" shape are what's worth keeping
-consistent across apps, not the env var mechanism itself.
+Two independent flags, not one, because they answer different questions: `ui`
+controls what the settings screen renders, `dispatch` controls what actually
+makes the network call — an app can adopt the shared UI while still routing
+through its own backend, or vice versa, while it migrates. Both default to
+`true` (calling `resolveDispatcherFeatures()` with no overrides turns
+everything on), so an app opts *out* per feature rather than opting in from a
+cold start. `resolveDispatcherFeatures` never reads environment variables
+itself — every bundler exposes them differently
+(`import.meta.env.VITE_*`, `process.env.NEXT_PUBLIC_*`,
+`process.env.REACT_APP_*`, …) — so each app's own config module resolves its
+own env var and passes the boolean in; the flag names and shapes are what's
+worth keeping consistent across apps, not the env var mechanism itself.
 
 ## 5. Versioning across multiple consuming apps
 

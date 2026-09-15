@@ -25,6 +25,7 @@ ModelDispatcher/
 │   │   │   ├── agent.ts
 │   │   │   ├── config.ts
 │   │   │   ├── externalChat.ts
+│   │   │   ├── features.ts
 │   │   │   ├── http.ts
 │   │   │   ├── index.ts
 │   │   │   ├── messages.ts
@@ -39,6 +40,7 @@ ModelDispatcher/
 │   │   │   ├── agent.test.ts
 │   │   │   ├── config.test.ts
 │   │   │   ├── externalChat.test.ts
+│   │   │   ├── features.test.ts
 │   │   │   ├── http.test.ts
 │   │   │   └── messages.test.ts
 │   │   ├── .gitignore
