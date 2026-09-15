@@ -1,0 +1,882 @@
+<title>AI Explained</title>
+<style>
+  :root {
+    --bg: #faf9f7;
+    --surface: #ffffff;
+    --surface-2: #f3f1ec;
+    --text: #1c1b1f;
+    --text-muted: #6b6570;
+    --border: #e8e3da;
+    --accent: #2554d8;
+    --accent-ink: #ffffff;
+    --accent-soft: #eaf0ff;
+    --teal: #0f766e;
+    --teal-soft: #e6f4f2;
+    --amber: #a15c07;
+    --amber-soft: #fbeed9;
+    --shadow: 0 1px 2px rgba(28, 27, 31, 0.04), 0 10px 28px -14px rgba(28, 27, 31, 0.18);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131218;
+      --surface: #1c1b23;
+      --surface-2: #23222b;
+      --text: #ece9f2;
+      --text-muted: #9d97ab;
+      --border: #322f3b;
+      --accent: #7c93ff;
+      --accent-ink: #10131f;
+      --accent-soft: #22284a;
+      --teal: #34d1c4;
+      --teal-soft: #123330;
+      --amber: #f0b447;
+      --amber-soft: #3a2c14;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px -14px rgba(0, 0, 0, 0.55);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #131218;
+    --surface: #1c1b23;
+    --surface-2: #23222b;
+    --text: #ece9f2;
+    --text-muted: #9d97ab;
+    --border: #322f3b;
+    --accent: #7c93ff;
+    --accent-ink: #10131f;
+    --accent-soft: #22284a;
+    --teal: #34d1c4;
+    --teal-soft: #123330;
+    --amber: #f0b447;
+    --amber-soft: #3a2c14;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 28px -14px rgba(0, 0, 0, 0.55);
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Rubik", system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding-inline: 20px;
+    padding-block: clamp(20px, 4vw, 48px);
+  }
+
+  .page {
+    max-width: 44rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(26px, 4vw, 40px);
+  }
+
+  header.top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; flex-direction: column; gap: 2px; }
+  .brand .eyebrow {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .brand h1 {
+    margin: 0;
+    font-size: clamp(1.5rem, 3vw, 1.9rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .lang-switch {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    flex: none;
+  }
+  .lang-btn {
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .lang-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  .lang-btn:hover:not([aria-pressed="true"]) { color: var(--text); }
+  .lang-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .intro {
+    margin: 0;
+    font-size: 1.05rem;
+    line-height: 1.65;
+    color: var(--text-muted);
+    text-wrap: balance;
+  }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; }
+  .toolbar-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .toolbar-btn:hover { background: var(--surface-2); }
+  .toolbar-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .toolbar-btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .toolbar-btn.primary:hover { filter: brightness(1.05); }
+  .toolbar-btn.primary:disabled { opacity: 0.55; cursor: default; }
+
+  .terms { display: flex; flex-direction: column; gap: 12px; }
+
+  .term-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .term-toggle {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    width: 100%;
+    padding: 1.1rem 1.2rem;
+    background: transparent;
+    border: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+  }
+  .term-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .term-badge {
+    flex: none;
+    width: 2.4rem;
+    height: 2.4rem;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.05rem;
+  }
+  .term-head { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+  .term-name { margin: 0; font-size: 1.08rem; font-weight: 700; }
+  .term-def { margin: 0; font-size: 0.94rem; line-height: 1.55; color: var(--text-muted); }
+
+  .chev { flex: none; width: 20px; height: 20px; color: var(--text-muted); margin-top: 4px; transition: transform 0.2s ease; }
+  .term-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
+
+  .term-detail {
+    padding: 0 1.2rem 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .term-example {
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+    border-inline-start: 2px solid var(--border);
+    padding-inline-start: 0.6rem;
+  }
+  .term-analogy {
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.55;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 0.7rem;
+    padding: 0.6rem 0.75rem;
+  }
+  .term-analogy b { color: var(--text); }
+
+  .ui-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 1.15rem 1.25rem;
+    background: var(--teal-soft);
+    border: 1px solid color-mix(in srgb, var(--teal) 45%, transparent);
+    border-radius: 1rem;
+  }
+  .ui-panel h2 { margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--teal); }
+  .ui-panel p { margin: 0; font-size: 0.92rem; line-height: 1.6; }
+
+  .section-block { display: flex; flex-direction: column; gap: 14px; border-top: 1px solid var(--border); padding-top: 24px; }
+  .section-block h2 { margin: 0; font-size: 1.15rem; font-weight: 700; }
+  .section-intro { margin: 0; font-size: 0.92rem; line-height: 1.6; color: var(--text-muted); }
+
+  .provider-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 640px) { .provider-grid { grid-template-columns: 1fr; } }
+
+  .provider-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 1rem 1.05rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    box-shadow: var(--shadow);
+  }
+  .provider-head { display: flex; align-items: center; gap: 0.6rem; }
+  .provider-badge {
+    flex: none;
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.98rem;
+  }
+  .provider-badge.p-gemini { color: var(--accent); background: var(--accent-soft); }
+  .provider-badge.p-openai { color: var(--teal); background: var(--teal-soft); }
+  .provider-badge.p-claude { color: var(--amber); background: var(--amber-soft); }
+  .provider-name { font-weight: 700; font-size: 0.95rem; }
+
+  .provider-rows { display: flex; flex-direction: column; gap: 0.55rem; }
+  .provider-row { display: flex; flex-direction: column; gap: 0.15rem; }
+  .row-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+  .row-value { font-size: 0.85rem; line-height: 1.5; }
+
+  .compare-analogy {
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.55;
+    font-style: italic;
+    color: var(--text-muted);
+    border-inline-start: 2px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    padding-inline-start: 0.6rem;
+  }
+
+  .sim-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+  .sim-field { display: flex; flex-direction: column; gap: 0.3rem; }
+  .sim-field label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); }
+  .sim-field select {
+    padding: 0.55rem 0.7rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.86rem;
+    min-width: 15rem;
+    max-width: 100%;
+  }
+
+  .sim-pipeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 8px; }
+  .sim-step {
+    padding: 0.6rem 0.5rem;
+    border-radius: 0.7rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    text-align: center;
+    transition: background 0.25s ease, border-color 0.25s ease;
+  }
+  .sim-step .step-num {
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .sim-step .step-label { font-size: 0.72rem; font-weight: 700; line-height: 1.3; }
+  .sim-step.done { border-color: color-mix(in srgb, var(--accent) 30%, transparent); background: var(--surface-2); }
+  .sim-step.active { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: var(--accent-soft); }
+  .sim-step.active .step-num, .sim-step.done .step-num { background: var(--accent); color: var(--accent-ink); }
+
+  .sim-log {
+    margin: 0;
+    padding: 0.75rem 0.9rem;
+    border-radius: 0.7rem;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    font-size: 0.86rem;
+    line-height: 1.55;
+    min-height: 2.4em;
+  }
+
+  footer.note {
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  footer.note a { color: var(--accent); }
+</style>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+
+<div class="page">
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow" id="eyebrow"></span>
+      <h1 id="page-title"></h1>
+    </div>
+    <div class="lang-switch" role="group" id="lang-switch" aria-label="Language"></div>
+  </header>
+
+  <p class="intro" id="intro"></p>
+
+  <div class="toolbar">
+    <button type="button" class="toolbar-btn" id="expand-all-btn"></button>
+    <button type="button" class="toolbar-btn" id="collapse-all-btn"></button>
+  </div>
+
+  <div class="terms" id="terms"></div>
+
+  <div class="ui-panel">
+    <h2 id="ui-heading"></h2>
+    <p id="ui-body"></p>
+  </div>
+
+  <section class="section-block">
+    <h2 id="compare-heading"></h2>
+    <p class="section-intro" id="compare-intro"></p>
+    <div class="provider-grid" id="provider-grid"></div>
+    <p class="compare-analogy" id="compare-analogy"></p>
+  </section>
+
+  <section class="section-block">
+    <h2 id="sim-heading"></h2>
+    <p class="section-intro" id="sim-intro"></p>
+    <div class="sim-controls">
+      <div class="sim-field">
+        <label for="scenario-select" id="scenario-label"></label>
+        <select id="scenario-select"></select>
+      </div>
+      <button type="button" class="toolbar-btn primary" id="run-btn"></button>
+    </div>
+    <div class="sim-pipeline" id="sim-pipeline"></div>
+    <p class="sim-log" id="sim-log"></p>
+  </section>
+
+  <footer class="note" id="footer"></footer>
+</div>
+
+<script>
+const LANGS = ["en", "fr", "he"];
+const CHEVRON_SVG =
+  '<svg class="chev" viewBox="0 0 20 20" fill="none" aria-hidden="true">' +
+  '<path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+const STRINGS = {
+  en: {
+    dir: "ltr",
+    langName: "English",
+    eyebrow: "New here?",
+    title: "AI, in plain words",
+    intro:
+      "This app lets you pick an AI provider, add your own key, or skip that entirely — here's what those words actually mean, with a real-world comparison for each one.",
+    expandAll: "Expand every term",
+    collapseAll: "Collapse all",
+    rowLabels: { model: "Model", app: "App", agent: "Agent" },
+    terms: [
+      {
+        letter: "M", name: "Model",
+        def: "The AI itself — the system that reads your text and writes a reply. Gemini, GPT, and Claude are all models.",
+        example: "Different models answer at different speeds, cost different amounts, and are better or worse at different kinds of tasks.",
+        analogy: "Like a chef: all the training and technique live in this one specialist — you never see the kitchen, just what they cook.",
+      },
+      {
+        letter: "P", name: "Provider",
+        def: "The company that runs a model and answers requests for it — Google, OpenAI, Anthropic, Groq.",
+        example: "“Provider” is the company; “model” is the specific AI it's running for you.",
+        analogy: "Like a restaurant chain — each provider runs its own chef (model) and kitchen (servers).",
+      },
+      {
+        letter: "P", name: "Prompt",
+        def: "The text you send the model — your question or instruction.",
+        example: "Everything the model writes back is a response to some prompt, whether you typed it or an app built it for you.",
+        analogy: "Like the order you give the chef — the more specific it is, the closer the dish comes to what you actually wanted.",
+      },
+      {
+        letter: "A", name: "Agent",
+        def: "A program that uses a model in a loop: it can act on what the model says (like using a tool or looking something up), feed the result back in, and repeat.",
+        example: "“AI agent” just means an AI that can act and iterate — not a different technology from the model underneath.",
+        analogy: "Like handing a task to an assistant instead of placing one order — they can go check something, come back, and try again on their own.",
+      },
+      {
+        letter: "K", name: "API key",
+        def: "A password-like code that proves a request is coming from you, so the provider can bill or rate-limit your usage specifically.",
+        example: "You get one from the provider's own website, and it belongs only in this app's settings.",
+        analogy: "Like a personal tab at that restaurant — it's how the kitchen knows whose bill to run, and who's allowed in the door.",
+      },
+      {
+        letter: "B", name: "BYOK — bring your own key",
+        def: "Instead of the app paying for and managing keys for everyone, you supply your own key for whichever provider you choose.",
+        example: "The app never stores or sees your key anywhere but your own browser.",
+        analogy: "Like bringing your own bottle to a restaurant instead of buying from their bar — same restaurant, you just supply the ingredient.",
+      },
+    ],
+    uiHeading: "What you'll actually see",
+    uiBody:
+      "In this app's AI settings: a list of providers to choose from, a place to paste your own key (optional), and a button to try your question in a free AI app instead — no key required.",
+    compareHeading: "Same three layers, three providers",
+    compareIntro: "Whichever provider you pick in Settings, the same Model → App → Agent split applies:",
+    providers: [
+      { key: "gemini", name: "Google", model: "Gemini — the AI itself", app: "the Gemini app — the chat website/app", agent: "an agent built on Gemini, e.g. one that browses the web for you" },
+      { key: "openai", name: "OpenAI", model: "GPT — the AI itself", app: "ChatGPT — the chat website/app", agent: "an agent built on GPT, e.g. a support bot that calls tools on its own" },
+      { key: "claude", name: "Anthropic", model: "Claude — the AI itself", app: "claude.ai — the chat website/app", agent: "Claude Code — Claude wired into a loop with tools" },
+    ],
+    compareAnalogy:
+      "Real-world comparison: the model is the engine, the app is the car you drive yourself, and the agent is a self-driving car built on that same engine — more autonomy, not a different technology underneath.",
+    simHeading: "See it happen: a live dispatch",
+    simIntro: "Pick a scenario and watch exactly what happens behind this app's one settings screen.",
+    scenarioLabel: "Pick a scenario:",
+    runButton: "Run it step by step",
+    stepLabels: ["Your prompt", "Check settings", "First attempt", "Fallback", "Answer"],
+    doneMessage: "Done — all five steps completed.",
+    idleMessage: "Idle. Pick a scenario above and press run.",
+    scenarios: [
+      {
+        id: "keys", label: "Pooled keys — one provider retries with a second key",
+        steps: [
+          "You ask: “Summarize this doc” — sent as a prompt.",
+          "The app checks your saved config: Gemini with 2 pooled keys.",
+          "It tries key #1 on Gemini — rate-limited (429).",
+          "It falls back to key #2 on the same Gemini model — succeeds.",
+          "You see the answer — you never noticed the retry.",
+        ],
+      },
+      {
+        id: "providers", label: "Multiple providers — falls back to the next one",
+        steps: [
+          "You ask: “Draft a reply to this email” — sent as a prompt.",
+          "The app checks your saved config: Gemini, then Groq, then Anthropic — in that order.",
+          "It tries Gemini first — the request errors out.",
+          "It falls back to Groq — that key works and returns an answer.",
+          "You see the answer — same settings screen, whichever provider actually answered.",
+        ],
+      },
+      {
+        id: "external", label: "No key yet — ask a favorite app instead",
+        steps: [
+          "You ask a question but haven't added any provider or key yet.",
+          "The app checks your settings: no providers configured, but Claude is saved as your favorite free app.",
+          "Clicking “Ask Claude” opens claude.ai in a new tab with your question pre-filled.",
+          "It's also copied to your clipboard, in case pasting doesn't work.",
+          "You get your answer from Claude's own app — no key, no setup.",
+        ],
+      },
+    ],
+    footer: "Part of ModelDispatcher — the same picker and these definitions are shared across every app that uses it.",
+  },
+  fr: {
+    dir: "ltr",
+    langName: "Français",
+    eyebrow: "Nouveau ici ?",
+    title: "L'IA, en mots simples",
+    intro:
+      "Cette application vous permet de choisir un fournisseur d'IA, d'ajouter votre propre clé, ou de vous en passer entièrement — voici ce que ces mots signifient vraiment, avec une comparaison réelle pour chacun.",
+    expandAll: "Développer tous les termes",
+    collapseAll: "Tout réduire",
+    rowLabels: { model: "Modèle", app: "Application", agent: "Agent" },
+    terms: [
+      {
+        letter: "M", name: "Modèle",
+        def: "L'IA elle-même — le système qui lit votre texte et rédige une réponse. Gemini, GPT et Claude sont tous des modèles.",
+        example: "Les modèles diffèrent par leur vitesse, leur coût, et leurs points forts selon le type de tâche.",
+        analogy: "Comme un chef : toute la formation et la technique tiennent dans ce seul spécialiste — vous ne voyez jamais la cuisine, seulement ce qu'il prépare.",
+      },
+      {
+        letter: "F", name: "Fournisseur",
+        def: "L'entreprise qui exploite un modèle et répond aux requêtes pour lui — Google, OpenAI, Anthropic, Groq.",
+        example: "Le « fournisseur » est l'entreprise ; le « modèle » est l'IA précise qu'elle fait fonctionner pour vous.",
+        analogy: "Comme une chaîne de restaurants — chaque fournisseur exploite son propre chef (modèle) et sa cuisine (serveurs).",
+      },
+      {
+        letter: "P", name: "Prompt (invite)",
+        def: "Le texte que vous envoyez au modèle — votre question ou instruction.",
+        example: "Tout ce que le modèle répond est une réponse à un prompt, que vous l'ayez tapé vous-même ou qu'une application l'ait généré.",
+        analogy: "Comme la commande que vous passez au chef — plus elle est précise, plus le plat se rapproche de ce que vous vouliez vraiment.",
+      },
+      {
+        letter: "A", name: "Agent",
+        def: "Un programme qui utilise un modèle en boucle : il peut agir selon ce que dit le modèle (utiliser un outil, faire une recherche), réinjecter le résultat, et recommencer.",
+        example: "Un « agent IA » est simplement une IA capable d'agir et d'itérer — pas une technologie différente du modèle qui la fait fonctionner.",
+        analogy: "Comme confier une tâche à un assistant plutôt qu'une simple commande — il peut aller vérifier quelque chose, revenir, et réessayer tout seul.",
+      },
+      {
+        letter: "C", name: "Clé API",
+        def: "Un code, comme un mot de passe, qui prouve au fournisseur qu'une requête vient de vous, pour facturer ou limiter votre usage.",
+        example: "Vous l'obtenez sur le site du fournisseur, et elle n'a sa place que dans les réglages de cette application.",
+        analogy: "Comme une ardoise personnelle dans ce restaurant — c'est ainsi que la cuisine sait qui facturer, et qui a le droit d'entrer.",
+      },
+      {
+        letter: "B", name: "BYOK — apportez votre propre clé",
+        def: "Plutôt que l'application paie et gère des clés pour tout le monde, vous fournissez votre propre clé pour le fournisseur de votre choix.",
+        example: "L'application ne voit ni ne stocke jamais votre clé ailleurs que dans votre propre navigateur.",
+        analogy: "Comme apporter votre propre bouteille au restaurant plutôt que d'acheter au bar — même restaurant, c'est juste vous qui fournissez l'ingrédient.",
+      },
+    ],
+    uiHeading: "Ce que vous allez voir",
+    uiBody:
+      "Dans les réglages IA de cette application : une liste de fournisseurs au choix, un endroit pour coller votre propre clé (facultatif), et un bouton pour essayer votre question dans une IA gratuite à la place — sans clé requise.",
+    compareHeading: "Mêmes trois niveaux, trois fournisseurs",
+    compareIntro: "Quel que soit le fournisseur choisi dans les réglages, la même répartition Modèle → Application → Agent s'applique :",
+    providers: [
+      { key: "gemini", name: "Google", model: "Gemini — l'IA elle-même", app: "l'application Gemini — le site/l'appli de discussion", agent: "un agent basé sur Gemini, par ex. capable de naviguer sur le web pour vous" },
+      { key: "openai", name: "OpenAI", model: "GPT — l'IA elle-même", app: "ChatGPT — le site/l'appli de discussion", agent: "un agent basé sur GPT, par ex. un bot de support qui utilise des outils tout seul" },
+      { key: "claude", name: "Anthropic", model: "Claude — l'IA elle-même", app: "claude.ai — le site/l'appli de discussion", agent: "Claude Code — Claude branché à une boucle avec des outils" },
+    ],
+    compareAnalogy:
+      "Comparaison réelle : le modèle est le moteur, l'application est la voiture que vous conduisez vous-même, et l'agent est une voiture autonome construite sur ce même moteur — plus d'autonomie, pas une technologie différente en dessous.",
+    simHeading: "Voyez-le en direct : une répartition réelle",
+    simIntro: "Choisissez un scénario et regardez exactement ce qui se passe derrière ce seul écran de réglages.",
+    scenarioLabel: "Choisissez un scénario :",
+    runButton: "Lancer étape par étape",
+    stepLabels: ["Votre prompt", "Vérification", "Première tentative", "Repli", "Réponse"],
+    doneMessage: "Terminé — les cinq étapes sont accomplies.",
+    idleMessage: "En attente. Choisissez un scénario ci-dessus et lancez.",
+    scenarios: [
+      {
+        id: "keys", label: "Clés en réserve — un fournisseur réessaie avec une deuxième clé",
+        steps: [
+          "Vous demandez : « Résume ce document » — envoyé comme prompt.",
+          "L'application vérifie vos réglages : Gemini avec 2 clés en réserve.",
+          "Elle essaie la clé n°1 sur Gemini — limite de débit atteinte (429).",
+          "Elle bascule sur la clé n°2, même modèle Gemini — ça fonctionne.",
+          "Vous voyez la réponse — vous n'avez même pas remarqué la nouvelle tentative.",
+        ],
+      },
+      {
+        id: "providers", label: "Plusieurs fournisseurs — bascule sur le suivant",
+        steps: [
+          "Vous demandez : « Rédige une réponse à cet e-mail » — envoyé comme prompt.",
+          "L'application vérifie vos réglages : Gemini, puis Groq, puis Anthropic — dans cet ordre.",
+          "Elle essaie Gemini en premier — la requête échoue.",
+          "Elle bascule sur Groq — cette clé fonctionne et renvoie une réponse.",
+          "Vous voyez la réponse — le même écran de réglages, quel que soit le fournisseur qui a répondu.",
+        ],
+      },
+      {
+        id: "external", label: "Pas encore de clé — demandez à une appli favorite",
+        steps: [
+          "Vous posez une question mais n'avez encore ajouté aucun fournisseur ni clé.",
+          "L'application vérifie vos réglages : aucun fournisseur configuré, mais Claude est enregistré comme votre appli gratuite favorite.",
+          "En cliquant sur « Demander à Claude », claude.ai s'ouvre dans un nouvel onglet avec votre question déjà remplie.",
+          "Elle est aussi copiée dans le presse-papiers, au cas où le collage ne fonctionnerait pas.",
+          "Vous obtenez votre réponse depuis l'application de Claude elle-même — sans clé, sans configuration.",
+        ],
+      },
+    ],
+    footer: "Fait partie de ModelDispatcher — ce même sélecteur et ces définitions sont partagés par toutes les applications qui l'utilisent.",
+  },
+  he: {
+    dir: "rtl",
+    langName: "עברית",
+    eyebrow: "חדשים כאן?",
+    title: "AI, במילים פשוטות",
+    intro:
+      "האפליקציה הזו נותנת לכם לבחור ספק AI, להוסיף מפתח משלכם, או לדלג על זה לגמרי — הנה מה שהמילים האלה באמת אומרות, עם השוואה מהעולם האמיתי לכל אחת מהן.",
+    expandAll: "פתחו את כל המושגים",
+    collapseAll: "סגרו הכל",
+    rowLabels: { model: "מודל", app: "אפליקציה", agent: "סוכן" },
+    terms: [
+      {
+        letter: "מ", name: "מודל",
+        def: "ה-AI עצמו — המערכת שקוראת את הטקסט שלכם וכותבת תשובה. Gemini, GPT ו-Claude הם כולם מודלים.",
+        example: "מודלים שונים עונים במהירויות שונות, עולים סכומים שונים, וטובים או פחות טובים במשימות שונות.",
+        analogy: "כמו שף: כל ההכשרה והטכניקה נמצאות באותו מומחה אחד — אתם אף פעם לא רואים את המטבח, רק את מה שהוא מבשל.",
+      },
+      {
+        letter: "ס", name: "ספק",
+        def: "החברה שמפעילה מודל ועונה לבקשות עבורו — Google, OpenAI, Anthropic, Groq.",
+        example: "“ספק” הוא החברה; “מודל” הוא ה-AI הספציפי שהיא מפעילה בשבילכם.",
+        analogy: "כמו רשת מסעדות — כל ספק מפעיל שף (מודל) ומטבח (שרתים) משלו.",
+      },
+      {
+        letter: "פ", name: "פרומפט (prompt)",
+        def: "הטקסט ששולחים למודל — השאלה או ההנחיה שלכם.",
+        example: "כל מה שהמודל כותב הוא תגובה לאיזשהו פרומפט, בין אם הקלדתם אותו בעצמכם ובין אם אפליקציה בנתה אותו מאחורי הקלעים.",
+        analogy: "כמו ההזמנה שאתם מוסרים לשף — ככל שהיא מדויקת יותר, המנה תהיה קרובה יותר למה שבאמת רציתם.",
+      },
+      {
+        letter: "ס", name: "סוכן (agent)",
+        def: "תוכנה שמשתמשת במודל בלולאה: היא יכולה לפעול לפי מה שהמודל אומר (כמו להשתמש בכלי או לחפש משהו), להזין את התוצאה בחזרה, ולחזור על התהליך.",
+        example: "“סוכן AI” פשוט אומר AI שיכול לפעול ולחזור על עצמו — לא טכנולוגיה שונה מהותית מהמודל שמריץ אותו.",
+        analogy: "כמו למסור משימה לעוזר במקום הזמנה בודדת — הוא יכול ללכת לבדוק משהו, לחזור, ולנסות שוב לבד.",
+      },
+      {
+        letter: "מ", name: "מפתח API",
+        def: "קוד דמוי-סיסמה שמוכיח לספק שהבקשה מגיעה מכם, כדי שיוכל לחייב או להגביל את השימוש שלכם באופן ספציפי.",
+        example: "מקבלים אותו מהאתר של הספק עצמו, והמקום היחיד שלו הוא בהגדרות של האפליקציה הזו.",
+        analogy: "כמו חשבון אישי פתוח באותה מסעדה — כך המטבח יודע למי לחייב, ומי מורשה להיכנס.",
+      },
+      {
+        letter: "B", name: "BYOK — הביאו מפתח משלכם",
+        def: "במקום שהאפליקציה תשלם ותנהל מפתחות API עבור כולם, אתם מספקים מפתח משלכם לספק שבחרתם.",
+        example: "האפליקציה לעולם לא שומרת או רואה את המפתח שלכם במקום אחר מלבד הדפדפן שלכם.",
+        analogy: "כמו להביא בקבוק יין משלכם למסעדה במקום לקנות מהבר שלה — אותה מסעדה, רק אתם מספקים את הרכיב.",
+      },
+    ],
+    uiHeading: "מה שתראו בפועל",
+    uiBody:
+      "בהגדרות ה-AI של האפליקציה הזו: רשימת ספקים לבחירה, מקום להדביק את המפתח שלכם (רשות), וכפתור לנסות את השאלה שלכם באפליקציית AI חינמית במקום — בלי צורך במפתח.",
+    compareHeading: "אותן שלוש שכבות, שלושה ספקים",
+    compareIntro: "לא משנה איזה ספק תבחרו בהגדרות, אותה חלוקה של מודל ← אפליקציה ← סוכן חלה:",
+    providers: [
+      { key: "gemini", name: "Google", model: "Gemini — ה-AI עצמו", app: "אפליקציית Gemini — אתר/אפליקציית הצ'אט", agent: "סוכן מבוסס Gemini, למשל כזה שגולש באינטרנט בשבילכם" },
+      { key: "openai", name: "OpenAI", model: "GPT — ה-AI עצמו", app: "ChatGPT — אתר/אפליקציית הצ'אט", agent: "סוכן מבוסס GPT, למשל בוט תמיכה שמפעיל כלים בעצמו" },
+      { key: "claude", name: "Anthropic", model: "Claude — ה-AI עצמו", app: "claude.ai — אתר/אפליקציית הצ'אט", agent: "Claude Code — Claude מחובר ללולאה עם כלים" },
+    ],
+    compareAnalogy:
+      "השוואה מהעולם האמיתי: המודל הוא המנוע, האפליקציה היא המכונית שאתם נוהגים בעצמכם, והסוכן הוא מכונית אוטונומית שנבנתה על אותו מנוע — יותר עצמאות, לא טכנולוגיה אחרת מתחת.",
+    simHeading: "תראו את זה בפעולה: ניתוב חי",
+    simIntro: "בחרו תרחיש וצפו בדיוק במה שקורה מאחורי מסך ההגדרות היחיד הזה.",
+    scenarioLabel: "בחרו תרחיש:",
+    runButton: "הרץ שלב אחר שלב",
+    stepLabels: ["הפרומפט שלכם", "בדיקת הגדרות", "ניסיון ראשון", "מעבר לחלופה", "התשובה"],
+    doneMessage: "הושלם — כל חמשת השלבים בוצעו.",
+    idleMessage: "ממתין. בחרו תרחיש למעלה ולחצו הרצה.",
+    scenarios: [
+      {
+        id: "keys", label: "מפתחות במאגר — ספק אחד מנסה שוב עם מפתח שני",
+        steps: [
+          "אתם שואלים: \"תסכם לי את המסמך הזה\" — נשלח כפרומפט.",
+          "האפליקציה בודקת את ההגדרות שלכם: Gemini עם 2 מפתחות במאגר.",
+          "היא מנסה את מפתח מס' 1 ב-Gemini — הגבלת קצב (429).",
+          "היא עוברת למפתח מס' 2, אותו מודל Gemini — מצליח.",
+          "אתם רואים את התשובה — בלי לשים לב שהייתה ניסיון חוזר.",
+        ],
+      },
+      {
+        id: "providers", label: "כמה ספקים — עובר לספק הבא",
+        steps: [
+          "אתם שואלים: \"נסח לי תגובה למייל הזה\" — נשלח כפרומפט.",
+          "האפליקציה בודקת את ההגדרות שלכם: Gemini, אחר כך Groq, ואז Anthropic — בסדר הזה.",
+          "היא מנסה קודם את Gemini — הבקשה נכשלת.",
+          "היא עוברת ל-Groq — המפתח הזה עובד ומחזיר תשובה.",
+          "אתם רואים את התשובה — אותו מסך הגדרות, לא משנה איזה ספק בפועל ענה.",
+        ],
+      },
+      {
+        id: "external", label: "עדיין אין מפתח — שואלים אפליקציה מועדפת במקום",
+        steps: [
+          "אתם שואלים שאלה אבל עדיין לא הוספתם ספק או מפתח.",
+          "האפליקציה בודקת את ההגדרות שלכם: אין ספקים מוגדרים, אבל Claude שמור כאפליקציית ה-AI החינמית המועדפת עליכם.",
+          "לחיצה על \"שאל את Claude\" פותחת את claude.ai בכרטיסייה חדשה עם השאלה שלכם כבר ממולאת.",
+          "היא גם מועתקת ללוח (clipboard), למקרה שההדבקה לא תעבוד.",
+          "אתם מקבלים את התשובה שלכם מהאפליקציה של Claude עצמה — בלי מפתח, בלי הגדרה.",
+        ],
+      },
+    ],
+    footer: "חלק מ-ModelDispatcher — אותו רכיב בחירה והגדרות אלה משותפים לכל אפליקציה שמשתמשת בו.",
+  },
+};
+
+let currentLang = "en";
+let simRunning = false;
+let simTimer = null;
+
+function toggleTermDetail(toggleBtn) {
+  const expanded = toggleBtn.getAttribute("aria-expanded") === "true";
+  toggleBtn.setAttribute("aria-expanded", String(!expanded));
+  const detail = document.getElementById(toggleBtn.getAttribute("aria-controls"));
+  detail.hidden = expanded;
+}
+
+function toggleAllCards(open) {
+  document.querySelectorAll(".term-toggle").forEach((btn) => {
+    btn.setAttribute("aria-expanded", String(open));
+    document.getElementById(btn.getAttribute("aria-controls")).hidden = !open;
+  });
+}
+
+function resetSimulator(s) {
+  clearInterval(simTimer);
+  simRunning = false;
+  const runBtn = document.getElementById("run-btn");
+  runBtn.disabled = false;
+  document.querySelectorAll("#sim-pipeline .sim-step").forEach((step) => {
+    step.classList.remove("active", "done");
+  });
+  document.getElementById("sim-log").textContent = s.idleMessage;
+}
+
+function runSimulation() {
+  if (simRunning) return;
+  const s = STRINGS[currentLang];
+  const select = document.getElementById("scenario-select");
+  const scenario = s.scenarios.find((sc) => sc.id === select.value) || s.scenarios[0];
+  const steps = document.querySelectorAll("#sim-pipeline .sim-step");
+  const log = document.getElementById("sim-log");
+  const runBtn = document.getElementById("run-btn");
+
+  simRunning = true;
+  runBtn.disabled = true;
+  steps.forEach((step) => step.classList.remove("active", "done"));
+
+  let i = 0;
+  simTimer = setInterval(() => {
+    if (i > 0) {
+      steps[i - 1].classList.remove("active");
+      steps[i - 1].classList.add("done");
+    }
+    if (i < steps.length) {
+      steps[i].classList.add("active");
+      log.textContent = scenario.steps[i];
+      i++;
+    } else {
+      clearInterval(simTimer);
+      log.textContent = scenario.steps[scenario.steps.length - 1] + " " + s.doneMessage;
+      runBtn.disabled = false;
+      simRunning = false;
+    }
+  }, 2600);
+}
+
+function render(lang) {
+  currentLang = lang;
+  const s = STRINGS[lang];
+  document.documentElement.lang = lang;
+  document.documentElement.dir = s.dir;
+
+  document.getElementById("eyebrow").textContent = s.eyebrow;
+  document.getElementById("page-title").textContent = s.title;
+  document.getElementById("intro").textContent = s.intro;
+
+  const expandBtn = document.getElementById("expand-all-btn");
+  const collapseBtn = document.getElementById("collapse-all-btn");
+  expandBtn.textContent = s.expandAll;
+  collapseBtn.textContent = s.collapseAll;
+  expandBtn.onclick = () => toggleAllCards(true);
+  collapseBtn.onclick = () => toggleAllCards(false);
+
+  const termsEl = document.getElementById("terms");
+  termsEl.innerHTML = "";
+  s.terms.forEach((t, i) => {
+    const card = document.createElement("div");
+    card.className = "term-card";
+    const detailId = "term-detail-" + i;
+    card.innerHTML =
+      `<button type="button" class="term-toggle" aria-expanded="false" aria-controls="${detailId}">` +
+      `<span class="term-badge">${t.letter}</span>` +
+      `<span class="term-head"><span class="term-name">${t.name}</span><span class="term-def">${t.def}</span></span>` +
+      CHEVRON_SVG +
+      `</button>` +
+      `<div class="term-detail" id="${detailId}" hidden>` +
+      `<p class="term-example">${t.example}</p>` +
+      `<p class="term-analogy">💡 ${t.analogy}</p>` +
+      `</div>`;
+    termsEl.appendChild(card);
+  });
+  termsEl.querySelectorAll(".term-toggle").forEach((btn) => {
+    btn.addEventListener("click", () => toggleTermDetail(btn));
+  });
+
+  document.getElementById("ui-heading").textContent = s.uiHeading;
+  document.getElementById("ui-body").textContent = s.uiBody;
+
+  document.getElementById("compare-heading").textContent = s.compareHeading;
+  document.getElementById("compare-intro").textContent = s.compareIntro;
+  document.getElementById("compare-analogy").textContent = s.compareAnalogy;
+
+  const gridEl = document.getElementById("provider-grid");
+  gridEl.innerHTML = "";
+  s.providers.forEach((p) => {
+    const card = document.createElement("div");
+    card.className = "provider-card";
+    card.innerHTML =
+      `<div class="provider-head"><span class="provider-badge p-${p.key}">${p.name[0]}</span><span class="provider-name">${p.name}</span></div>` +
+      `<div class="provider-rows">` +
+      `<div class="provider-row"><span class="row-label">${s.rowLabels.model}</span><span class="row-value">${p.model}</span></div>` +
+      `<div class="provider-row"><span class="row-label">${s.rowLabels.app}</span><span class="row-value">${p.app}</span></div>` +
+      `<div class="provider-row"><span class="row-label">${s.rowLabels.agent}</span><span class="row-value">${p.agent}</span></div>` +
+      `</div>`;
+    gridEl.appendChild(card);
+  });
+
+  document.getElementById("sim-heading").textContent = s.simHeading;
+  document.getElementById("sim-intro").textContent = s.simIntro;
+  document.getElementById("scenario-label").textContent = s.scenarioLabel;
+  document.getElementById("run-btn").textContent = s.runButton;
+  document.getElementById("run-btn").onclick = runSimulation;
+
+  const select = document.getElementById("scenario-select");
+  select.innerHTML = "";
+  s.scenarios.forEach((sc) => {
+    const opt = document.createElement("option");
+    opt.value = sc.id;
+    opt.textContent = sc.label;
+    select.appendChild(opt);
+  });
+
+  const pipelineEl = document.getElementById("sim-pipeline");
+  pipelineEl.innerHTML = "";
+  s.stepLabels.forEach((label, i) => {
+    const step = document.createElement("div");
+    step.className = "sim-step";
+    step.innerHTML = `<div class="step-num">${i + 1}</div><div class="step-label">${label}</div>`;
+    pipelineEl.appendChild(step);
+  });
+
+  resetSimulator(s);
+
+  document.getElementById("footer").innerHTML =
+    s.footer.replace(
+      "ModelDispatcher",
+      '<a href="https://github.com/joka-7/ModelDispatcher" target="_blank" rel="noreferrer">ModelDispatcher</a>',
+    );
+
+  const switchEl = document.getElementById("lang-switch");
+  switchEl.innerHTML = "";
+  for (const code of LANGS) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "lang-btn";
+    btn.textContent = STRINGS[code].langName;
+    btn.setAttribute("aria-pressed", String(code === lang));
+    btn.addEventListener("click", () => {
+      render(code);
+      try {
+        localStorage.setItem("aiGlossaryLang", code);
+      } catch {
+        // Private browsing / storage blocked — language just won't persist.
+      }
+    });
+    switchEl.appendChild(btn);
+  }
+}
+
+let initial = "en";
+try {
+  const saved = localStorage.getItem("aiGlossaryLang");
+  if (saved && LANGS.includes(saved)) initial = saved;
+} catch {
+  // No storage available — default to English.
+}
+render(initial);
+</script>

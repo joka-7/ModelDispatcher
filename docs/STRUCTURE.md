@@ -26,6 +26,7 @@ ModelDispatcher/
 │   │   │   ├── config.ts
 │   │   │   ├── externalChat.ts
 │   │   │   ├── externalChatFavorite.ts
+│   │   │   ├── features.ts
 │   │   │   ├── http.ts
 │   │   │   ├── index.ts
 │   │   │   ├── messages.ts
@@ -41,6 +42,7 @@ ModelDispatcher/
 │   │   │   ├── config.test.ts
 │   │   │   ├── externalChat.test.ts
 │   │   │   ├── externalChatFavorite.test.ts
+│   │   │   ├── features.test.ts
 │   │   │   ├── http.test.ts
 │   │   │   └── messages.test.ts
 │   │   ├── .gitignore
@@ -114,7 +116,8 @@ ModelDispatcher/
 │   ├── HLD.md                            # High-Level Design — kept current, narrower and wins over ARCHITECTURE.md…
 │   ├── LLD.md                            # Low-Level Design — kept current, narrower and wins over ARCHITECTURE.md where…
 │   ├── STRUCTURE.md                      # Repository structure
-│   └── USAGE.md                          # Usage guide
+│   ├── USAGE.md                          # Usage guide
+│   └── ai-glossary.html                  # Interactive EN/FR/HE glossary site — ModelPicker's default glossaryUrl
 ├── examples/
 │   └── basic_agent.py                    # Minimal end-to-end usage example
 ├── src/

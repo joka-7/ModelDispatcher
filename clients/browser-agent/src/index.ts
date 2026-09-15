@@ -33,6 +33,8 @@ export {
   loadExternalChatFavorite,
   saveExternalChatFavorite,
 } from "./externalChatFavorite.js";
+export { DEFAULT_DISPATCHER_FEATURES, resolveDispatcherFeatures } from "./features.js";
+export type { DispatcherFeatureFlags } from "./features.js";
 export { buildMessages } from "./messages.js";
 export type { BuildMessagesOptions } from "./messages.js";
 export { isKnownProvider, modelOptionsFor, MODEL_OPTIONS, PROVIDERS } from "./registry.js";

@@ -303,7 +303,9 @@ describe("ModelPicker — favorite free AI app", () => {
 describe("ModelPicker — glossary link", () => {
   it("links to the default glossary URL, or a custom one when given", () => {
     render({ config: EMPTY_CONFIG, onConfigChange: vi.fn() });
-    expect((container.querySelector(".md-glossary-link") as HTMLAnchorElement).href).toContain("docs/GLOSSARY.md");
+    expect((container.querySelector(".md-glossary-link") as HTMLAnchorElement).href).toContain(
+      "docs/ai-glossary.html",
+    );
 
     render({ config: EMPTY_CONFIG, onConfigChange: vi.fn(), glossaryUrl: "https://example.com/glossary" });
     expect((container.querySelector(".md-glossary-link") as HTMLAnchorElement).href).toBe(

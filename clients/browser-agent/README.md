@@ -146,6 +146,41 @@ provider/key/model) — picking a favorite here has nothing to do with which
 BYOK provider is configured, and a settings screen commonly offers both as
 independent, unrelated choices.
 
+## Making it optional per app: `resolveDispatcherFeatures`
+
+Adopting this doesn't have to be all-or-nothing on day one. Two independent,
+developer-set flags — never a switch an end user sees — decide what an app
+actually turns on:
+
+```ts
+// modeldispatcher.config.ts — your app's own config module, not exported to users
+import { resolveDispatcherFeatures } from "@joka-7/modeldispatcher-browser-agent";
+
+export const dispatcherFeatures = resolveDispatcherFeatures({
+  ui: import.meta.env.VITE_MODEL_DISPATCHER_UI !== "false",
+  dispatch: import.meta.env.VITE_MODEL_DISPATCHER_DISPATCH !== "false",
+});
+```
+
+```tsx
+function AiSettingsScreen() {
+  // .ui: render <ModelPicker>/<AskExternallyButton>, or this app's own settings screen.
+  return dispatcherFeatures.ui ? <ModelPicker {...props} /> : <LegacyAiSettings />;
+}
+
+async function askAi(question: string) {
+  // .dispatch: route through complete()'s fallback dispatch, or this app's own call path.
+  return dispatcherFeatures.dispatch ? complete(loadConfig(), question) : legacyAskAi(question);
+}
+```
+
+Both default to `true` — resolving with no overrides at all turns everything
+on — so an app opts *out* per feature during a gradual rollout rather than
+opting in from a cold start. This package never reads environment variables
+itself (every bundler exposes them differently); your app's config module
+resolves its own env var and passes the boolean in. Full pattern, including
+the non-Vite env var forms: [`docs/USAGE.md`](../../docs/USAGE.md).
+
 ## What's in scope, what isn't
 
 This package owns the generic "talk to a provider" plumbing: provider
@@ -165,5 +200,5 @@ npm run typecheck
 npm test
 ```
 
-All 75 tests run against mocked `fetch`/`ReadableStream`/`window.open`/
+All 81 tests run against mocked `fetch`/`ReadableStream`/`window.open`/
 clipboard — no real network, no real API key needed.

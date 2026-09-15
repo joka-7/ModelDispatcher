@@ -55,12 +55,18 @@ Building the settings screen for that in React? See
 [`clients/react-ui`](./clients/react-ui)
 (`@joka-7/modeldispatcher-react-ui`) for `<ModelPicker>` — add one or more
 providers, a model picked from a curated list per provider, pooled API keys,
-saving a favorite free AI app, and a link to
-[`docs/GLOSSARY.md`](./docs/GLOSSARY.md) for first-time users, with nothing
-in it that navigates — plus `<AskExternallyButton>`, the separate action
-that actually opens that favorite from wherever the user is asking a
+saving a favorite free AI app, and a link to the interactive
+[`docs/ai-glossary.html`](./docs/ai-glossary.html) for first-time users, with
+nothing in it that navigates — plus `<AskExternallyButton>`, the separate
+action that actually opens that favorite from wherever the user is asking a
 question. So every app renders the same picker instead of each one
 hand-building its own, and a settings screen never redirects on its own.
+
+Adopting either isn't all-or-nothing: `resolveDispatcherFeatures` from
+`browser-agent` gives each app's own developer — never the end user — two
+flags (`ui`, `dispatch`) to opt out per app during rollout instead of
+switching everything on at once. See
+[`docs/USAGE.md`](./docs/USAGE.md#4-no-backend-browser-apps--browser-agent--react-ui-byok).
 
 ## Quickstart
 

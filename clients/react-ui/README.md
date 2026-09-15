@@ -122,7 +122,7 @@ or your own store happens at the call site.
 | `onConfigChange` | `(config: AgentConfig) => void` | yes | Called with the full updated config on any add/remove/edit. |
 | `externalChatFavorite` | `ExternalChatProviderId \| null` | yes | The saved "ask externally" favorite, or `null`. |
 | `onExternalChatFavoriteChange` | `(favorite: ExternalChatProviderId \| null) => void` | yes | Called when the user picks or clears a favorite. Persist it yourself — this only reports the choice. |
-| `glossaryUrl` | `string` | no | Where "New to AI agents?" links. Defaults to this repo's [`docs/GLOSSARY.md`](../../docs/GLOSSARY.md). |
+| `glossaryUrl` | `string` | no | Where "New to AI agents?" links. Defaults to this repo's interactive, trilingual [`docs/ai-glossary.html`](../../docs/ai-glossary.html). |
 
 Each provider card lets the user pick a model from `MODEL_OPTIONS` (a
 curated shortlist per vendor, from `browser-agent`), add/remove pooled API

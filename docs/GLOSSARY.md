@@ -1,9 +1,16 @@
 # AI glossary
 
 Plain-language definitions for the terms every app's AI settings screen
-throws at a new user. Linked from
-[`ModelPicker`](../clients/react-ui)'s "New to AI agents?" link — this is the
-page that link goes to.
+throws at a new user.
+
+**Want the interactive version?** [`docs/ai-glossary.html`](./ai-glossary.html)
+covers the same terms in English, French, and Hebrew, with a real-world
+analogy per term, a Gemini/GPT/Claude comparison, and a live dispatch
+simulator — open it directly, or via
+[jsDelivr](https://cdn.jsdelivr.net/gh/joka-7/ModelDispatcher@main/docs/ai-glossary.html)
+for a rendered page instead of raw source. `ModelPicker`'s "New to AI
+agents?" link points there by default; this file is the plain-text fallback
+for anywhere HTML doesn't render.
 
 ## Model
 
