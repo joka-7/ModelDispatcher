@@ -7,7 +7,7 @@
  */
 
 import { consumeLines, describeHttpError, fetchWithRetry } from "../http.js";
-import type { AgentConfig, ChatMessage, RequestOptions } from "../types.js";
+import type { ChatMessage, ProviderCallConfig, RequestOptions } from "../types.js";
 
 const DEFAULT_MAX_TOKENS = 1024;
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
@@ -20,7 +20,7 @@ function systemOf(messages: readonly ChatMessage[], explicit?: string): string |
   return explicit ?? messages.find((m) => m.role === "system")?.content;
 }
 
-function buildBody(cfg: AgentConfig, messages: readonly ChatMessage[], options: RequestOptions, stream: boolean) {
+function buildBody(cfg: ProviderCallConfig, messages: readonly ChatMessage[], options: RequestOptions, stream: boolean) {
   const system = systemOf(messages, options.systemInstruction);
   return {
     model: cfg.model,
@@ -31,7 +31,7 @@ function buildBody(cfg: AgentConfig, messages: readonly ChatMessage[], options: 
   };
 }
 
-function headers(cfg: AgentConfig): HeadersInit {
+function headers(cfg: ProviderCallConfig): HeadersInit {
   return {
     "Content-Type": "application/json",
     "x-api-key": cfg.apiKey,
@@ -41,7 +41,7 @@ function headers(cfg: AgentConfig): HeadersInit {
 }
 
 export async function completeAnthropic(
-  cfg: AgentConfig,
+  cfg: ProviderCallConfig,
   messages: readonly ChatMessage[],
   options: RequestOptions = {},
 ): Promise<string> {
@@ -56,7 +56,7 @@ export async function completeAnthropic(
 }
 
 export async function streamAnthropic(
-  cfg: AgentConfig,
+  cfg: ProviderCallConfig,
   messages: readonly ChatMessage[],
   onChunk: (fullTextSoFar: string) => void,
   options: RequestOptions = {},

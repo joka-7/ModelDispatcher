@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { completeOpenAICompatible, streamOpenAICompatible } from "../../src/providers/openaiCompatible.js";
-import type { AgentConfig } from "../../src/types.js";
+import type { ProviderCallConfig } from "../../src/types.js";
 
-const cfg: AgentConfig = { provider: "openai", apiKey: "sk-x", model: "gpt-4o-mini", ollamaUrl: "" };
+const cfg: ProviderCallConfig = { provider: "openai", apiKey: "sk-x", model: "gpt-4o-mini", ollamaUrl: "" };
 
 describe("completeOpenAICompatible", () => {
   const originalFetch = globalThis.fetch;

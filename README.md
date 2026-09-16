@@ -46,17 +46,21 @@ GitHub Packages — see [`clients/typescript`](./clients/typescript). It talks t
 For an app with **no backend at all** — a pure browser app doing
 bring-your-own-key calls straight to a provider — see
 [`clients/browser-agent`](./clients/browser-agent)
-(`@joka-7/modeldispatcher-browser-agent`) instead: the same multi-provider
-idea (Gemini/OpenAI/Anthropic/Groq/Ollama), running client-side with no
-server and no vendor SDK required.
+(`@joka-7/modeldispatcher-browser-agent`) instead: the same multi-provider,
+multi-key fallback idea (Gemini/OpenAI/Anthropic/Groq/Ollama, several pooled
+keys per vendor), running client-side with no server and no vendor SDK
+required.
 
 Building the settings screen for that in React? See
 [`clients/react-ui`](./clients/react-ui)
-(`@joka-7/modeldispatcher-react-ui`) for one `<ModelPicker>` component —
-provider/model select, key input, the no-key "try it elsewhere" escape
-hatch, and a link to the interactive
-[`docs/ai-glossary.html`](./docs/ai-glossary.html) for first-time users — so
-every app renders the same picker instead of each one hand-building its own.
+(`@joka-7/modeldispatcher-react-ui`) for `<ModelPicker>` — add one or more
+providers, a model picked from a curated list per provider, pooled API keys,
+saving a favorite free AI app, and a link to the interactive
+[`docs/ai-glossary.html`](./docs/ai-glossary.html) for first-time users, with
+nothing in it that navigates — plus `<AskExternallyButton>`, the separate
+action that actually opens that favorite from wherever the user is asking a
+question. So every app renders the same picker instead of each one
+hand-building its own, and a settings screen never redirects on its own.
 
 Adopting either isn't all-or-nothing: `resolveDispatcherFeatures` from
 `browser-agent` gives each app's own developer — never the end user — two

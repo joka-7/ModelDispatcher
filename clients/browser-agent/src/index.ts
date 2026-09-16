@@ -8,29 +8,43 @@
  * server, nothing sent anywhere but the provider itself.
  */
 
-export { complete, streamChat, streamComplete } from "./agent.js";
+export {
+  AllProvidersExhaustedError,
+  complete,
+  NoProviderConfiguredError,
+  streamChat,
+  streamComplete,
+} from "./agent.js";
 export {
   clearConfig,
   DEFAULT_CONFIG_KEYS,
   isConfigReady,
+  isProviderConfigured,
   loadConfig,
+  resolveStorage,
   saveConfig,
 } from "./config.js";
 export type { ConfigKeys, ConfigStorage } from "./config.js";
 export { DEFAULT_TIMEOUT_MS, describeHttpError, validateOllamaUrl } from "./http.js";
 export { EXTERNAL_CHAT_PROVIDERS, openExternalChat } from "./externalChat.js";
 export type { OpenExternalChatDeps, OpenExternalChatResult } from "./externalChat.js";
+export {
+  DEFAULT_EXTERNAL_CHAT_FAVORITE_KEY,
+  loadExternalChatFavorite,
+  saveExternalChatFavorite,
+} from "./externalChatFavorite.js";
 export { DEFAULT_DISPATCHER_FEATURES, resolveDispatcherFeatures } from "./features.js";
 export type { DispatcherFeatureFlags } from "./features.js";
 export { buildMessages } from "./messages.js";
 export type { BuildMessagesOptions } from "./messages.js";
-export { isKnownProvider, PROVIDERS } from "./registry.js";
+export { isKnownProvider, modelOptionsFor, MODEL_OPTIONS, PROVIDERS } from "./registry.js";
 export type {
   AgentConfig,
   ChatMessage,
   ChatRole,
   ExternalChatProviderId,
   ExternalChatProviderInfo,
+  ProviderCredential,
   ProviderId,
   ProviderInfo,
   RequestOptions,

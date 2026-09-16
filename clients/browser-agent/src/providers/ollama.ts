@@ -7,7 +7,7 @@
  */
 
 import { consumeLines, fetchWithRetry, validateOllamaUrl } from "../http.js";
-import type { AgentConfig, ChatMessage, RequestOptions } from "../types.js";
+import type { ChatMessage, ProviderCallConfig, RequestOptions } from "../types.js";
 
 const DEFAULT_MAX_TOKENS = 1024;
 
@@ -17,7 +17,7 @@ function toApiMessages(messages: readonly ChatMessage[], systemInstruction?: str
   return [...system, ...messages.map((m) => ({ role: m.role, content: m.content }))];
 }
 
-function buildBody(cfg: AgentConfig, messages: readonly ChatMessage[], options: RequestOptions, stream: boolean) {
+function buildBody(cfg: ProviderCallConfig, messages: readonly ChatMessage[], options: RequestOptions, stream: boolean) {
   return {
     model: cfg.model,
     messages: toApiMessages(messages, options.systemInstruction),
@@ -27,7 +27,7 @@ function buildBody(cfg: AgentConfig, messages: readonly ChatMessage[], options: 
 }
 
 export async function completeOllama(
-  cfg: AgentConfig,
+  cfg: ProviderCallConfig,
   messages: readonly ChatMessage[],
   options: RequestOptions = {},
 ): Promise<string> {
@@ -47,7 +47,7 @@ export async function completeOllama(
 }
 
 export async function streamOllama(
-  cfg: AgentConfig,
+  cfg: ProviderCallConfig,
   messages: readonly ChatMessage[],
   onChunk: (fullTextSoFar: string) => void,
   options: RequestOptions = {},

@@ -5,7 +5,7 @@
  */
 
 import { consumeLines, describeHttpError, fetchWithRetry } from "../http.js";
-import type { AgentConfig, ChatMessage, RequestOptions } from "../types.js";
+import type { ChatMessage, ProviderCallConfig, RequestOptions } from "../types.js";
 
 const DEFAULT_MAX_TOKENS = 1024;
 
@@ -40,7 +40,7 @@ function buildBody(messages: readonly ChatMessage[], options: RequestOptions) {
 }
 
 export async function completeGemini(
-  cfg: AgentConfig,
+  cfg: ProviderCallConfig,
   messages: readonly ChatMessage[],
   options: RequestOptions = {},
 ): Promise<string> {
@@ -60,7 +60,7 @@ export async function completeGemini(
 }
 
 export async function streamGemini(
-  cfg: AgentConfig,
+  cfg: ProviderCallConfig,
   messages: readonly ChatMessage[],
   onChunk: (fullTextSoFar: string) => void,
   options: RequestOptions = {},

@@ -25,6 +25,7 @@ ModelDispatcher/
 │   │   │   ├── agent.ts
 │   │   │   ├── config.ts
 │   │   │   ├── externalChat.ts
+│   │   │   ├── externalChatFavorite.ts
 │   │   │   ├── features.ts
 │   │   │   ├── http.ts
 │   │   │   ├── index.ts
@@ -40,6 +41,7 @@ ModelDispatcher/
 │   │   │   ├── agent.test.ts
 │   │   │   ├── config.test.ts
 │   │   │   ├── externalChat.test.ts
+│   │   │   ├── externalChatFavorite.test.ts
 │   │   │   ├── features.test.ts
 │   │   │   ├── http.test.ts
 │   │   │   └── messages.test.ts
@@ -50,11 +52,16 @@ ModelDispatcher/
 │   │   ├── tsconfig.build.json
 │   │   └── tsconfig.json
 │   ├── react-ui/                         # Shared React model/agent picker component — see its own README.md
+│   │   ├── screenshots/
+│   │   │   ├── action.png
+│   │   │   └── settings.png
 │   │   ├── src/
+│   │   │   ├── AskExternallyButton.tsx
 │   │   │   ├── ModelPicker.tsx
 │   │   │   ├── index.ts
 │   │   │   └── styles.css
 │   │   ├── tests/
+│   │   │   ├── AskExternallyButton.test.tsx
 │   │   │   ├── ModelPicker.test.tsx
 │   │   │   └── setup.ts
 │   │   ├── .gitignore
