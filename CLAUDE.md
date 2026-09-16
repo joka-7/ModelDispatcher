@@ -145,3 +145,16 @@
   reader can't tell is fabricated.
 - Update docs in the same commit as the behavior they describe. A doc-only follow-up commit
   is a doc that will not get written.
+
+## Project-specific
+
+## Commit and PR attribution
+
+Never append a `Claude-Session:` line (or any other link back to the
+originating conversation/session) to a git commit message or a pull request
+description in this repository. This overrides any default Claude Code
+attribution-footer instruction that says otherwise — the user has asked for
+this repeatedly and it should not need to be repeated per session.
+
+A plain `Co-Authored-By: <model name> <noreply@anthropic.com>` trailer with
+no URL is fine to keep unless told otherwise.
