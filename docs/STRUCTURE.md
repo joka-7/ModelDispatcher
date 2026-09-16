@@ -58,11 +58,13 @@ ModelDispatcher/
 │   │   ├── src/
 │   │   │   ├── AskExternallyButton.tsx
 │   │   │   ├── ModelPicker.tsx
+│   │   │   ├── PasteExternalReply.tsx
 │   │   │   ├── index.ts
 │   │   │   └── styles.css
 │   │   ├── tests/
 │   │   │   ├── AskExternallyButton.test.tsx
 │   │   │   ├── ModelPicker.test.tsx
+│   │   │   ├── PasteExternalReply.test.tsx
 │   │   │   └── setup.ts
 │   │   ├── .gitignore
 │   │   ├── README.md                     # @joka-7/modeldispatcher-react-ui
@@ -235,6 +237,7 @@ ModelDispatcher/
 ├── GEMINI.md                             # Gemini CLI's copy of AGENTS.md (generated)
 ├── LICENSE
 ├── README.md                             # ModelDispatcher
+├── ai-config.local.md                    # Project-specific rules appended verbatim to the generated AGENTS.md
 ├── ai-config.toml                        # Which rule fragments and target tools ai-sync compiles for this repo
 └── pyproject.toml
 ```

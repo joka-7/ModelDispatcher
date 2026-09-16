@@ -324,3 +324,64 @@
   font-size: 0.8rem;
   color: var(--md-text-muted);
 }
+
+/* ---- PasteExternalReply — captures the pasted answer from an external chat ---- */
+
+.md-paste-reply {
+  --md-accent: #2563eb;
+  --md-accent-ink: #ffffff;
+  --md-border: #e2e8f0;
+  --md-text: #0f172a;
+  --md-text-muted: #64748b;
+  --md-surface: #ffffff;
+  --md-radius-sm: 0.5rem;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-family: inherit;
+}
+
+.md-paste-reply-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--md-text);
+}
+
+.md-paste-reply-textarea {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--md-border);
+  border-radius: var(--md-radius-sm);
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--md-text);
+  background: var(--md-surface);
+  resize: vertical;
+}
+
+.md-paste-reply-textarea:focus-visible {
+  outline: none;
+  border-color: var(--md-accent);
+}
+
+.md-paste-reply-btn {
+  align-self: flex-start;
+  padding: 0.5rem 1.1rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--md-accent);
+  color: var(--md-accent-ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.md-paste-reply-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.md-paste-reply-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

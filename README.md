@@ -59,8 +59,10 @@ saving a favorite free AI app, and a link to the interactive
 [`docs/ai-glossary.html`](./docs/ai-glossary.html) for first-time users, with
 nothing in it that navigates — plus `<AskExternallyButton>`, the separate
 action that actually opens that favorite from wherever the user is asking a
-question. So every app renders the same picker instead of each one
-hand-building its own, and a settings screen never redirects on its own.
+question, and `<PasteExternalReply>` for apps that need the answer back in
+a specific structure (parsing it is the app's own job — this just captures
+the raw pasted text). So every app renders the same picker instead of each
+one hand-building its own, and a settings screen never redirects on its own.
 
 Adopting either isn't all-or-nothing: `resolveDispatcherFeatures` from
 `browser-agent` gives each app's own developer — never the end user — two
@@ -121,26 +123,27 @@ when behavior evolves past what's written there.
 ```text
 ModelDispatcher/
 ├── .github/
-├── clients/         # Non-Python integration layers, documented in ARCHITECTURE.md's…
-├── demo/            # Interactive end-to-end demo of the gateway
+├── clients/            # Non-Python integration layers, documented in ARCHITECTURE.md's…
+├── demo/               # Interactive end-to-end demo of the gateway
 ├── docs/
 ├── examples/
 ├── src/
 ├── templates/
-├── tests/           # Behavioral test suite (routing, fallback, quota, agent loop, security,…
-├── .ai              # Ogen-ai submodule — the shared source of rules, skills and the ai-sync…
+├── tests/              # Behavioral test suite (routing, fallback, quota, agent loop, security,…
+├── .ai                 # Ogen-ai submodule — the shared source of rules, skills and the ai-sync…
 ├── .dockerignore
 ├── .gitignore
 ├── .gitleaksignore
 ├── .gitmodules
-├── AGENTS.md        # The compiled coding rules every AI assistant reads — generated, do not…
-├── ARCHITECTURE.md  # ModelDispatcher — Architecture
-├── CLAUDE.md        # Claude Code's copy of AGENTS.md (generated)
+├── AGENTS.md           # The compiled coding rules every AI assistant reads — generated, do not…
+├── ARCHITECTURE.md     # ModelDispatcher — Architecture
+├── CLAUDE.md           # Claude Code's copy of AGENTS.md (generated)
 ├── Dockerfile
-├── GEMINI.md        # Gemini CLI's copy of AGENTS.md (generated)
+├── GEMINI.md           # Gemini CLI's copy of AGENTS.md (generated)
 ├── LICENSE
-├── README.md        # ModelDispatcher
-├── ai-config.toml   # Which rule fragments and target tools ai-sync compiles for this repo
+├── README.md           # ModelDispatcher
+├── ai-config.local.md  # Project-specific rules appended verbatim to the generated AGENTS.md
+├── ai-config.toml      # Which rule fragments and target tools ai-sync compiles for this repo
 └── pyproject.toml
 ```
 <!-- END GENERATED TREE -->

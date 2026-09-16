@@ -1,8 +1,9 @@
 # @joka-7/modeldispatcher-react-ui
 
-Two React components for the AI settings screen every one of your apps
-needs and has been building separately — split along a line that matters:
-**picking a preference is not the same thing as acting on it.**
+Three React components for the AI settings screen every one of your apps
+needs and has been building separately — split along lines that matter:
+**picking a preference is not the same thing as acting on it, and asking a
+question is not the same thing as getting a usable answer back.**
 
 - **`ModelPicker`** — a pure settings screen. Add one or more providers, a
   model picked from a curated list per provider, and one or more pooled
@@ -14,6 +15,14 @@ needs and has been building separately — split along a line that matters:
   the prompt box), not on the settings screen — so clicking it is an
   expected "do something now" button, not a surprise redirect from a
   preferences page.
+- **`PasteExternalReply`** — the missing link after `AskExternallyButton`:
+  once that opens a tab, there's no API call at all, so nothing can be
+  parsed automatically. This captures whatever the user pastes back and
+  hands it to your app raw — it has no opinion on JSON or any other
+  format, so an app expecting a specific structure (e.g. AppMyTrip parsing
+  an itinerary, StepByLearn parsing a lesson plan) does its own parsing on
+  what comes out, the same way it already builds its own format
+  instructions into the question it hands to `openExternalChat`.
 
 Built on top of [`@joka-7/modeldispatcher-browser-agent`](../browser-agent) —
 these are purely the visual layer over that package's provider registry,
@@ -62,7 +71,7 @@ import {
   saveExternalChatFavorite,
   complete,
 } from "@joka-7/modeldispatcher-browser-agent";
-import { ModelPicker, AskExternallyButton } from "@joka-7/modeldispatcher-react-ui";
+import { ModelPicker, AskExternallyButton, PasteExternalReply } from "@joka-7/modeldispatcher-react-ui";
 import "@joka-7/modeldispatcher-react-ui/styles.css";
 
 // Settings screen — nothing here ever navigates. config.providers is a
@@ -90,13 +99,28 @@ function AiSettings() {
 }
 
 // Wherever the user actually composes a question — a chat box, a prompt
-// field, wherever. This is the one place that opens anything.
-function PromptBar({ question }: { question: string }) {
+// field, wherever. This is the one place that opens anything. Baking your
+// own format instruction into `question` (and parsing PasteExternalReply's
+// raw text the same way) is entirely your app's job — these components
+// don't know or care what shape you asked for.
+function PromptBar({ tripDetails }: { tripDetails: string }) {
   const [favorite] = useState(loadExternalChatFavorite);
+  const question = `${tripDetails}\n\nRespond with ONLY JSON: [{"day": number, "title": string, "activities": string[]}]`;
+
   return (
     <div>
       {/* ...your textarea/send button... */}
       <AskExternallyButton favorite={favorite} question={question} />
+      <PasteExternalReply
+        label="No key? Paste what it replied with below."
+        onApply={(rawText) => {
+          try {
+            updateItinerary(JSON.parse(rawText)); // your own parsing/validation
+          } catch {
+            showError("That didn't look like the JSON we asked for — try pasting the full reply.");
+          }
+        }}
+      />
     </div>
   );
 }
@@ -139,6 +163,15 @@ vendors not already configured.
 | `onExternalChat` | `(result: OpenExternalChatResult) => void` | no | Called after a click opens a tab — e.g. to show your own toast. |
 | `externalChatDeps` | `OpenExternalChatDeps` | no | Injected `window.open`/clipboard, for tests or a non-browser host. |
 
+### `PasteExternalReply` props
+
+| Prop | Type | Required | Purpose |
+| --- | --- | --- | --- |
+| `onApply` | `(rawText: string) => void` | yes | Called with the trimmed, unmodified pasted text when the user clicks apply. Parsing/validating it against whatever format you asked for is entirely your own job — this component never inspects it. The textarea clears after the call. |
+| `label` | `string` | no | Text above the textarea. |
+| `placeholder` | `string` | no | Placeholder text in the empty textarea. |
+| `applyLabel` | `string` | no | Apply button text. |
+
 ## What's in scope, what isn't
 
 This package owns rendering and layout only. It has no opinion on state
@@ -148,7 +181,10 @@ about any app's prompts or business logic — same boundary `browser-agent`
 already draws. It also enforces one rule at the component boundary:
 `ModelPicker` has no way to call `openExternalChat` even internally — that
 action only exists in `AskExternallyButton`, so it can't accidentally end up
-back on a settings screen.
+back on a settings screen. Same boundary applies to `PasteExternalReply`:
+it has no notion of JSON, schemas, or any other output shape — it only
+captures and returns raw text, so it never needs updating as different
+apps ask their external agent for different structures.
 
 ## Testing
 
