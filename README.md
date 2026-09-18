@@ -39,8 +39,8 @@ a git ref instead:
 pip install "model-dispatcher[openai] @ git+https://github.com/joka-7/ModelDispatcher@v0.2.0"
 ```
 
-The TypeScript client (`@joka-7/modeldispatcher-client`) is published to
-GitHub Packages — see [`clients/typescript`](./clients/typescript). It talks to
+The TypeScript client (`@joka-7/modeldispatcher-client`) is published to the
+public npm registry — see [`clients/typescript`](./clients/typescript). It talks to
 *your own backend*, which is what runs the Python gateway above.
 
 For an app with **no backend at all** — a pure browser app doing

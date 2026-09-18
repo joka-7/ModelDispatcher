@@ -56,9 +56,8 @@ app that imports it.
 npm install @joka-7/modeldispatcher-react-ui
 ```
 
-(Published to GitHub Packages, same as the other `@joka-7` client packages —
-needs a `.npmrc` with `@joka-7:registry=https://npm.pkg.github.com` and a
-`read:packages` token.)
+(Published to the public npm registry, same as the other `@joka-7` client
+packages — no `.npmrc` or token needed.)
 
 ## Usage
 
