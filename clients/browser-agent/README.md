@@ -24,8 +24,7 @@ near-duplicate copies.
 npm install @joka-7/modeldispatcher-browser-agent
 ```
 
-(Published to GitHub Packages — needs a `.npmrc` with
-`@joka-7:registry=https://npm.pkg.github.com` and a `read:packages` token.)
+(Published to the public npm registry — no `.npmrc` or token needed.)
 
 ## Usage
 
