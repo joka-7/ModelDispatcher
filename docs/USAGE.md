@@ -124,8 +124,7 @@ backoff on 5xx, and typed decoding of the `trigger_key_wizard` handoff).
 npm install @joka-7/modeldispatcher-client
 ```
 
-(Published to GitHub Packages — needs a `.npmrc` with
-`@joka-7:registry=https://npm.pkg.github.com` and a `read:packages` token.)
+(Published to the public npm registry — no `.npmrc` or token needed.)
 
 ### Plain usage
 

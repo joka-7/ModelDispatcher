@@ -279,7 +279,7 @@ token) to fetch both — no private package index to stand up.
 | Artifact | Channel | `requirements.txt` / `package.json` entry |
 | --- | --- | --- |
 | Python gateway library | Git URL pin | `model-dispatcher @ git+https://github.com/joka-7/ModelDispatcher@<tag>` |
-| TypeScript client | GitHub Packages | `@joka-7/modeldispatcher-client` |
+| TypeScript client | public npm registry | `@joka-7/modeldispatcher-client` |
 
 Both are distribution-agnostic at the call site: migrating later to a private PyPI + npm
 registry changes only the dependency spec line — nothing in the wrapper or app code.
