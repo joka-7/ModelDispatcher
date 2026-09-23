@@ -264,7 +264,7 @@ QuotaHandler:
 in one `except`, and `demo/frontend/src/api.ts` models the response as a `DispatchOutcome`
 discriminated union that `App.tsx` switches on to open the key wizard. This section covers
 the packaged, reusable version of that pattern — a publishable TypeScript client
-([`clients/typescript`](./clients/typescript), `@joka-7/modeldispatcher-client`) and a
+([`clients/typescript`](./clients/typescript), `modeldispatcher-client`) and a
 reference integration ([`templates/vercel-app`](./templates/vercel-app)) so any Next.js/React
 app on Vercel can adopt the gateway by (a) dropping a thin Python wrapper into its `/api`
 folder and (b) installing the client. It adds the two things the demo lacks for production:
@@ -273,13 +273,14 @@ a **cryptographic request perimeter** (Firebase App Check) at the Vercel edge, a
 
 ### Distribution
 
-Both sides ship through **GitHub**, so a Vercel build needs exactly one credential (a GitHub
-token) to fetch both — no private package index to stand up.
+Both sides are fully public with no credential needed to fetch either: the Python gateway
+pins a git URL on this public GitHub repo, and the TypeScript client publishes to the public
+npm registry — no private package index to stand up.
 
 | Artifact | Channel | `requirements.txt` / `package.json` entry |
 | --- | --- | --- |
 | Python gateway library | Git URL pin | `model-dispatcher @ git+https://github.com/joka-7/ModelDispatcher@<tag>` |
-| TypeScript client | GitHub Packages | `@joka-7/modeldispatcher-client` |
+| TypeScript client | Public npm registry | `modeldispatcher-client` |
 
 Both are distribution-agnostic at the call site: migrating later to a private PyPI + npm
 registry changes only the dependency spec line — nothing in the wrapper or app code.
@@ -301,7 +302,7 @@ registry changes only the dependency spec line — nothing in the wrapper or app
 ModelDispatcher/
 ├── src/model_dispatcher/            # the gateway library (unchanged by this layer)
 ├── clients/
-│   └── typescript/                  # publishable @joka-7/modeldispatcher-client
+│   └── typescript/                  # publishable modeldispatcher-client
 │       ├── package.json             # name, version, exports, react as optional peerDep
 │       ├── tsconfig.json            # strict: true
 │       └── src/
@@ -330,7 +331,7 @@ ModelDispatcher/
         ├── app/ (or pages/)         # Next.js frontend
         │   ├── lib/gateway.ts       # createGatewayClient() configured for this app
         │   └── components/KeyWizard.tsx
-        ├── package.json             # depends on @joka-7/modeldispatcher-client + firebase
+        ├── package.json             # depends on modeldispatcher-client + firebase
         └── vercel.json              # function config (maxDuration); no pinned Python runtime
 ```
 

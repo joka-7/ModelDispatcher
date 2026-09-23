@@ -46,7 +46,7 @@ ModelDispatcher/
 │   │   │   ├── http.test.ts
 │   │   │   └── messages.test.ts
 │   │   ├── .gitignore
-│   │   ├── README.md                     # @joka-7/modeldispatcher-browser-agent
+│   │   ├── README.md                     # Modeldispatcher-browser-agent
 │   │   ├── package-lock.json
 │   │   ├── package.json
 │   │   ├── tsconfig.build.json
@@ -67,7 +67,7 @@ ModelDispatcher/
 │   │   │   ├── PasteExternalReply.test.tsx
 │   │   │   └── setup.ts
 │   │   ├── .gitignore
-│   │   ├── README.md                     # @joka-7/modeldispatcher-react-ui
+│   │   ├── README.md                     # Modeldispatcher-react-ui
 │   │   ├── package.json
 │   │   ├── tsconfig.build.json
 │   │   ├── tsconfig.json
@@ -237,6 +237,7 @@ ModelDispatcher/
 ├── GEMINI.md                             # Gemini CLI's copy of AGENTS.md (generated)
 ├── LICENSE
 ├── README.md                             # ModelDispatcher
+├── SECURITY.md                           # Security Policy
 ├── ai-config.local.md                    # Project-specific rules appended verbatim to the generated AGENTS.md
 ├── ai-config.toml                        # Which rule fragments and target tools ai-sync compiles for this repo
 └── pyproject.toml

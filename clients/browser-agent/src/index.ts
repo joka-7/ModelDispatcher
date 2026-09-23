@@ -1,5 +1,5 @@
 /**
- * @joka-7/modeldispatcher-browser-agent — public API surface.
+ * modeldispatcher-browser-agent — public API surface.
  *
  * A browser-native, bring-your-own-key AI agent core: the client-side
  * sibling to `model-dispatcher` for apps with no backend to run the Python

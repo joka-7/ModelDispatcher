@@ -2,7 +2,7 @@
  * Default look for ModelPicker/AskExternallyButton. Plain CSS, no build-time
  * preprocessing, so it works whether the consuming app bundles with Vite,
  * Next.js, or anything else — import it once
- * (`@joka-7/modeldispatcher-react-ui/styles.css`) or skip it and style the
+ * (`modeldispatcher-react-ui/styles.css`) or skip it and style the
  * `md-*` classes yourself.
  *
  * Every color/spacing/radius is a CSS variable scoped to `.md-picker` /

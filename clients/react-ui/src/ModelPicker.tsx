@@ -5,7 +5,7 @@
  * `templates/vercel-app`: it owns no persistence and knows nothing about
  * `localStorage` or any app's business logic, only `AgentConfig` in and a
  * changed `AgentConfig` out. Wire it to `loadConfig`/`saveConfig` from
- * `@joka-7/modeldispatcher-browser-agent` (or your own store) at the call site.
+ * `modeldispatcher-browser-agent` (or your own store) at the call site.
  *
  * `config.providers` is a fallback *list*, not a single selection: add more
  * than one provider (and pool more than one key per provider) and the
@@ -25,7 +25,7 @@ import {
   type ExternalChatProviderId,
   type ProviderCredential,
   type ProviderId,
-} from "@joka-7/modeldispatcher-browser-agent";
+} from "modeldispatcher-browser-agent";
 
 const DEFAULT_GLOSSARY_URL =
   "https://cdn.jsdelivr.net/gh/joka-7/ModelDispatcher@main/docs/ai-glossary.html";
@@ -36,7 +36,7 @@ export interface ModelPickerProps {
   /** Called with the full, updated config on any provider/model/key/URL change. */
   onConfigChange: (config: AgentConfig) => void;
   /** The saved "ask externally" favorite, or `null` if none is picked yet
-   * (see `loadExternalChatFavorite` in `@joka-7/modeldispatcher-browser-agent`). */
+   * (see `loadExternalChatFavorite` in `modeldispatcher-browser-agent`). */
   externalChatFavorite: ExternalChatProviderId | null;
   /** Called when the user picks or clears a favorite. Persist it yourself
    * (e.g. with `saveExternalChatFavorite`) — this component only reports the

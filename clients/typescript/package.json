@@ -1,5 +1,5 @@
 {
-  "name": "@joka-7/modeldispatcher-client",
+  "name": "modeldispatcher-client",
   "version": "0.6.0",
   "description": "Resilient TypeScript client for the ModelDispatcher AI gateway: interceptor pipeline with request timeouts, exponential backoff on 5xx, and structured 402/429 key-wizard handoff decoding.",
   "license": "MIT",
@@ -48,8 +48,5 @@
     "react": "^18.3.1",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
   }
 }

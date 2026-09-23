@@ -1,4 +1,4 @@
-# @joka-7/modeldispatcher-react-ui
+# modeldispatcher-react-ui
 
 Three React components for the AI settings screen every one of your apps
 needs and has been building separately — split along lines that matter:
@@ -24,7 +24,7 @@ question is not the same thing as getting a usable answer back.**
   what comes out, the same way it already builds its own format
   instructions into the question it hands to `openExternalChat`.
 
-Built on top of [`@joka-7/modeldispatcher-browser-agent`](../browser-agent) —
+Built on top of [`modeldispatcher-browser-agent`](../browser-agent) —
 these are purely the visual layer over that package's provider registry,
 model shortlist, favorite-preference storage, and fallback dispatch, so the
 two stay in lockstep.
@@ -53,12 +53,11 @@ app that imports it.
 ## Install
 
 ```bash
-npm install @joka-7/modeldispatcher-react-ui
+npm install modeldispatcher-react-ui
 ```
 
-(Published to GitHub Packages, same as the other `@joka-7` client packages —
-needs a `.npmrc` with `@joka-7:registry=https://npm.pkg.github.com` and a
-`read:packages` token.)
+(Published to the public npm registry, same as the other ModelDispatcher
+client packages — no `.npmrc` or token needed.)
 
 ## Usage
 
@@ -70,9 +69,9 @@ import {
   loadExternalChatFavorite,
   saveExternalChatFavorite,
   complete,
-} from "@joka-7/modeldispatcher-browser-agent";
-import { ModelPicker, AskExternallyButton, PasteExternalReply } from "@joka-7/modeldispatcher-react-ui";
-import "@joka-7/modeldispatcher-react-ui/styles.css";
+} from "modeldispatcher-browser-agent";
+import { ModelPicker, AskExternallyButton, PasteExternalReply } from "modeldispatcher-react-ui";
+import "modeldispatcher-react-ui/styles.css";
 
 // Settings screen — nothing here ever navigates. config.providers is a
 // fallback LIST: add Gemini, Groq, Anthropic, whatever, each with its own

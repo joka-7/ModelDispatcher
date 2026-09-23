@@ -1,7 +1,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AgentConfig, ExternalChatProviderId } from "@joka-7/modeldispatcher-browser-agent";
+import type { AgentConfig, ExternalChatProviderId } from "modeldispatcher-browser-agent";
 
 import { ModelPicker } from "../src/ModelPicker.js";
 

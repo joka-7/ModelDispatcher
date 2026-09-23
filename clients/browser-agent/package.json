@@ -1,5 +1,5 @@
 {
-  "name": "@joka-7/modeldispatcher-browser-agent",
+  "name": "modeldispatcher-browser-agent",
   "version": "0.6.0",
   "description": "Browser-native, bring-your-own-key AI agent core with cross-provider/cross-key fallback dispatch: multi-provider (Gemini/OpenAI/Anthropic/Groq/Ollama), streaming and non-streaming, no backend and no vendor SDK required. The client-side sibling to model-dispatcher for apps with no server to run it on.",
   "license": "MIT",
@@ -36,8 +36,5 @@
   "devDependencies": {
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
   }
 }

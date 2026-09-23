@@ -1,5 +1,5 @@
 /**
- * @joka-7/modeldispatcher-react-ui — public API surface.
+ * modeldispatcher-react-ui — public API surface.
  *
  * Three components for every app's AI settings: `ModelPicker` (a pure
  * settings screen — provider/model/key, and saving a favorite free AI app;

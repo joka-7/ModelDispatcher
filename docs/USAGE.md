@@ -114,23 +114,22 @@ deploying to Vercel.
 
 The browser never holds provider API keys — it calls **your** backend
 endpoint (the one built in §1, wrapped in an HTTP handler), and that endpoint
-is what actually imports `model_dispatcher`. `@joka-7/modeldispatcher-client`
+is what actually imports `model_dispatcher`. `modeldispatcher-client`
 is a thin, resilient wrapper around that HTTP call (timeout, retry with
 backoff on 5xx, and typed decoding of the `trigger_key_wizard` handoff).
 
 ### Install
 
 ```bash
-npm install @joka-7/modeldispatcher-client
+npm install modeldispatcher-client
 ```
 
-(Published to GitHub Packages — needs a `.npmrc` with
-`@joka-7:registry=https://npm.pkg.github.com` and a `read:packages` token.)
+(Published to the public npm registry — no `.npmrc` or token needed.)
 
 ### Plain usage
 
 ```ts
-import { GatewayClient } from "@joka-7/modeldispatcher-client";
+import { GatewayClient } from "modeldispatcher-client";
 
 const client = new GatewayClient({ endpoint: "/api/gateway" });
 const outcome = await client.dispatch({ prompt: "..." });
@@ -152,7 +151,7 @@ switch (outcome.kind) {
 ### React
 
 ```tsx
-import { useGateway } from "@joka-7/modeldispatcher-client/react";
+import { useGateway } from "modeldispatcher-client/react";
 
 function Chat({ client }: { client: GatewayClient }) {
   const { dispatch, wizard, dismissWizard } = useGateway(client);
@@ -180,14 +179,14 @@ doesn't want to run the Python gateway — skip §1/§2 entirely and call
 providers straight from the browser with the caller's own key:
 
 ```bash
-npm install @joka-7/modeldispatcher-browser-agent @joka-7/modeldispatcher-react-ui
+npm install modeldispatcher-browser-agent modeldispatcher-react-ui
 ```
 
 ```tsx
 import { useState } from "react";
-import { loadConfig, saveConfig, complete } from "@joka-7/modeldispatcher-browser-agent";
-import { ModelPicker } from "@joka-7/modeldispatcher-react-ui";
-import "@joka-7/modeldispatcher-react-ui/styles.css";
+import { loadConfig, saveConfig, complete } from "modeldispatcher-browser-agent";
+import { ModelPicker } from "modeldispatcher-react-ui";
+import "modeldispatcher-react-ui/styles.css";
 
 function AiSettings() {
   const [config, setConfig] = useState(loadConfig);
@@ -219,7 +218,7 @@ deploy-time config, never a switch an end user sees:
 
 ```ts
 // modeldispatcher.config.ts — your app's own config module, not exported to users
-import { resolveDispatcherFeatures } from "@joka-7/modeldispatcher-browser-agent";
+import { resolveDispatcherFeatures } from "modeldispatcher-browser-agent";
 
 export const dispatcherFeatures = resolveDispatcherFeatures({
   // Render <ModelPicker>/<AskExternallyButton> vs. this app's existing settings UI.

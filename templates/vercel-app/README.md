@@ -2,7 +2,7 @@
 
 A minimal Next.js (App Router) app that runs the **ModelDispatcher** gateway as a
 Vercel Python Function behind a Firebase App Check + Auth perimeter, and talks to
-it from the browser through the resilient `@joka-7/modeldispatcher-client`. App
+it from the browser through the resilient `modeldispatcher-client`. App
 Check attests the app instance; Firebase Auth (anonymous by default) attests the
 end user and is what makes per-tenant quota isolation real — the wrapper derives
 the tenant id from the verified `uid`, not from anything the client claims.
@@ -31,7 +31,7 @@ vercel-app/
 │   ├── components/KeyWizard.tsx
 │   ├── page.tsx             # dispatch console + outcome rendering
 │   └── layout.tsx
-├── package.json             # @joka-7/modeldispatcher-client + firebase + next
+├── package.json             # modeldispatcher-client + firebase + next
 ├── vercel.json              # function config
 └── .env.example
 ```

@@ -1,4 +1,4 @@
-# @joka-7/modeldispatcher-browser-agent
+# modeldispatcher-browser-agent
 
 A browser-native, bring-your-own-key AI agent core. The client-side sibling
 to `model-dispatcher` for apps with **no backend** to run the Python gateway
@@ -21,16 +21,15 @@ near-duplicate copies.
 ## Install
 
 ```bash
-npm install @joka-7/modeldispatcher-browser-agent
+npm install modeldispatcher-browser-agent
 ```
 
-(Published to GitHub Packages — needs a `.npmrc` with
-`@joka-7:registry=https://npm.pkg.github.com` and a `read:packages` token.)
+(Published to the public npm registry — no `.npmrc` or token needed.)
 
 ## Usage
 
 ```ts
-import { loadConfig, complete, streamChat, PROVIDERS, MODEL_OPTIONS } from "@joka-7/modeldispatcher-browser-agent";
+import { loadConfig, complete, streamChat, PROVIDERS, MODEL_OPTIONS } from "modeldispatcher-browser-agent";
 
 // Reads the whole fallback list from localStorage by default (one JSON
 // blob under "aiConfig"); pass a ConfigStorage + ConfigKeys to use your
@@ -63,7 +62,7 @@ provider `<select>` and a model `<select>`, the same shape every app's
 ### Fallback errors
 
 ```ts
-import { NoProviderConfiguredError, AllProvidersExhaustedError } from "@joka-7/modeldispatcher-browser-agent";
+import { NoProviderConfiguredError, AllProvidersExhaustedError } from "modeldispatcher-browser-agent";
 
 try {
   await complete(cfg, prompt);
@@ -96,7 +95,7 @@ product supports that, and always copying the question to the clipboard too
 as a fallback:
 
 ```ts
-import { openExternalChat, EXTERNAL_CHAT_PROVIDERS } from "@joka-7/modeldispatcher-browser-agent";
+import { openExternalChat, EXTERNAL_CHAT_PROVIDERS } from "modeldispatcher-browser-agent";
 
 const result = await openExternalChat("claude", "Summarise this in one sentence: ...");
 // result.prefilled        — true if the question actually made it into the URL
@@ -128,7 +127,7 @@ time — that's what this is for:
 import {
   loadExternalChatFavorite,
   saveExternalChatFavorite,
-} from "@joka-7/modeldispatcher-browser-agent";
+} from "modeldispatcher-browser-agent";
 
 // Settings screen: save the pick. No network call, no navigation.
 saveExternalChatFavorite("claude");
@@ -154,7 +153,7 @@ actually turns on:
 
 ```ts
 // modeldispatcher.config.ts — your app's own config module, not exported to users
-import { resolveDispatcherFeatures } from "@joka-7/modeldispatcher-browser-agent";
+import { resolveDispatcherFeatures } from "modeldispatcher-browser-agent";
 
 export const dispatcherFeatures = resolveDispatcherFeatures({
   ui: import.meta.env.VITE_MODEL_DISPATCHER_UI !== "false",

@@ -17,7 +17,7 @@
 
 "use client";
 
-import { createGatewayClient } from "@joka-7/modeldispatcher-client";
+import { createGatewayClient } from "modeldispatcher-client";
 import { type FirebaseApp, getApp, getApps, initializeApp } from "firebase/app";
 import {
   type AppCheck,

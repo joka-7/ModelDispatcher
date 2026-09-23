@@ -17,11 +17,11 @@ import {
   type ExternalChatProviderId,
   type OpenExternalChatDeps,
   type OpenExternalChatResult,
-} from "@joka-7/modeldispatcher-browser-agent";
+} from "modeldispatcher-browser-agent";
 
 export interface AskExternallyButtonProps {
   /** The saved favorite (see `ModelPicker`'s `externalChatFavorite` /
-   * `loadExternalChatFavorite` in `@joka-7/modeldispatcher-browser-agent`).
+   * `loadExternalChatFavorite` in `modeldispatcher-browser-agent`).
    * Renders nothing when `null`. */
   favorite: ExternalChatProviderId | null;
   /** The user's current question/prompt, carried into the opened product.
