@@ -146,10 +146,15 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Node
+        # No registry-url: it makes setup-node write an _authToken=${NODE_AUTH_TOKEN}
+        # line into a generated .npmrc even though NODE_AUTH_TOKEN is never set here —
+        # npm then tries that (empty) classic-token auth first and never falls through
+        # to OIDC trusted publishing, failing with a 404 that looks like a trusted-
+        # publisher mismatch but isn't one. registry.npmjs.org is npm's default
+        # anyway, so omitting this is enough.
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "22"
-          registry-url: "https://registry.npmjs.org"
           cache: npm
           cache-dependency-path: clients/typescript/package-lock.json
 
@@ -190,10 +195,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Node
+        # See publish_ts_client's Set up Node step for why registry-url is omitted.
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "22"
-          registry-url: "https://registry.npmjs.org"
           cache: npm
           cache-dependency-path: clients/browser-agent/package-lock.json
 
@@ -237,10 +242,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Node
+        # See publish_ts_client's Set up Node step for why registry-url is omitted.
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "22"
-          registry-url: "https://registry.npmjs.org"
 
       - name: Ensure npm supports Trusted Publishing (OIDC)
         run: npm install -g npm@latest
