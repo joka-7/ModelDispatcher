@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "model-dispatcher"
-version = "0.6.1"
+version = "0.6.2"
 description = "Resilient AI Model Gateway/Router: strategy providers, chain-of-responsibility fallback, native agent orchestration, token-aware multi-tenant quotas, and two-stage onboarding."
 readme = "README.md"
 license = { file = "LICENSE" }

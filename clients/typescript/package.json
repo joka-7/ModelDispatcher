@@ -1,8 +1,13 @@
 {
   "name": "modeldispatcher-client",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Resilient TypeScript client for the ModelDispatcher AI gateway: interceptor pipeline with request timeouts, exponential backoff on 5xx, and structured 402/429 key-wizard handoff decoding.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joka-7/ModelDispatcher.git",
+    "directory": "clients/typescript"
+  },
   "type": "module",
   "types": "./dist/index.d.ts",
   "module": "./dist/index.js",
