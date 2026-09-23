@@ -146,17 +146,23 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Node
-        # No registry-url: it makes setup-node write an _authToken=${NODE_AUTH_TOKEN}
-        # line into a generated .npmrc even though NODE_AUTH_TOKEN is never set here —
-        # npm then tries that (empty) classic-token auth first and never falls through
-        # to OIDC trusted publishing, failing with a 404 that looks like a trusted-
-        # publisher mismatch but isn't one. registry.npmjs.org is npm's default
-        # anyway, so omitting this is enough.
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "22"
+          registry-url: "https://registry.npmjs.org"
           cache: npm
           cache-dependency-path: clients/typescript/package-lock.json
+
+      - name: Remove the empty authToken line setup-node writes
+        # registry-url makes setup-node write _authToken=${NODE_AUTH_TOKEN} into a
+        # generated .npmrc even though NODE_AUTH_TOKEN is never set here (we rely on
+        # OIDC, not a stored token) — npm sees that (empty) line as "auth already
+        # configured" and skips OIDC trusted publishing entirely, failing the actual
+        # publish with a 404 that looks like a trusted-publisher mismatch but isn't
+        # one. registry-url itself has to stay: removing it instead of just this
+        # line stops npm from attempting OIDC at all (ENEEDAUTH, no provenance
+        # signed) since it no longer has a registry to authenticate against.
+        run: sed -i '/_authToken/d' "$NPM_CONFIG_USERCONFIG"
 
       - name: Ensure npm supports Trusted Publishing (OIDC)
         run: npm install -g npm@latest
@@ -195,12 +201,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Node
-        # See publish_ts_client's Set up Node step for why registry-url is omitted.
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "22"
+          registry-url: "https://registry.npmjs.org"
           cache: npm
           cache-dependency-path: clients/browser-agent/package-lock.json
+
+      - name: Remove the empty authToken line setup-node writes
+        # See publish_ts_client's step of the same name for why.
+        run: sed -i '/_authToken/d' "$NPM_CONFIG_USERCONFIG"
 
       - name: Ensure npm supports Trusted Publishing (OIDC)
         run: npm install -g npm@latest
@@ -242,10 +252,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Node
-        # See publish_ts_client's Set up Node step for why registry-url is omitted.
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Remove the empty authToken line setup-node writes
+        # See publish_ts_client's step of the same name for why.
+        run: sed -i '/_authToken/d' "$NPM_CONFIG_USERCONFIG"
 
       - name: Ensure npm supports Trusted Publishing (OIDC)
         run: npm install -g npm@latest
