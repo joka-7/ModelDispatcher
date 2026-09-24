@@ -164,9 +164,6 @@ jobs:
         # signed) since it no longer has a registry to authenticate against.
         run: sed -i '/_authToken/d' "$NPM_CONFIG_USERCONFIG"
 
-      - name: Ensure npm supports Trusted Publishing (OIDC)
-        run: npm install -g npm@latest
-
       - name: Install dependencies
         working-directory: clients/typescript
         run: npm ci
@@ -187,7 +184,14 @@ jobs:
 
       - name: Publish to npm
         working-directory: clients/typescript
-        run: npm publish --provenance
+        # npx guarantees a genuinely new-enough npm runs this specific command
+        # (>= 11.5.1, required for the OIDC trusted-publishing auth exchange) —
+        # a global `npm install -g npm@latest` doesn't reliably land ahead of the
+        # runner's bundled npm on PATH, so it can silently keep publishing with an
+        # npm too old to ever attempt OIDC, falling back to classic (missing)
+        # token auth. Pinned to an exact version rather than `latest`, matching
+        # this repo's pinned-dependency posture elsewhere (SHA-pinned Actions).
+        run: npx --yes npm@11.5.1 publish --provenance
 
   publish_browser_agent:
     name: Publish modeldispatcher-browser-agent
@@ -212,9 +216,6 @@ jobs:
         # See publish_ts_client's step of the same name for why.
         run: sed -i '/_authToken/d' "$NPM_CONFIG_USERCONFIG"
 
-      - name: Ensure npm supports Trusted Publishing (OIDC)
-        run: npm install -g npm@latest
-
       - name: Install dependencies
         working-directory: clients/browser-agent
         run: npm ci
@@ -235,7 +236,14 @@ jobs:
 
       - name: Publish to npm
         working-directory: clients/browser-agent
-        run: npm publish --provenance
+        # npx guarantees a genuinely new-enough npm runs this specific command
+        # (>= 11.5.1, required for the OIDC trusted-publishing auth exchange) —
+        # a global `npm install -g npm@latest` doesn't reliably land ahead of the
+        # runner's bundled npm on PATH, so it can silently keep publishing with an
+        # npm too old to ever attempt OIDC, falling back to classic (missing)
+        # token auth. Pinned to an exact version rather than `latest`, matching
+        # this repo's pinned-dependency posture elsewhere (SHA-pinned Actions).
+        run: npx --yes npm@11.5.1 publish --provenance
 
   publish_react_ui:
     name: Publish modeldispatcher-react-ui
@@ -261,9 +269,6 @@ jobs:
         # See publish_ts_client's step of the same name for why.
         run: sed -i '/_authToken/d' "$NPM_CONFIG_USERCONFIG"
 
-      - name: Ensure npm supports Trusted Publishing (OIDC)
-        run: npm install -g npm@latest
-
       - name: Install dependencies
         # No committed lockfile (see clients/react-ui: it depends on a
         # package published from this same repo, so `npm ci` isn't usable)
@@ -288,7 +293,14 @@ jobs:
 
       - name: Publish to npm
         working-directory: clients/react-ui
-        run: npm publish --provenance
+        # npx guarantees a genuinely new-enough npm runs this specific command
+        # (>= 11.5.1, required for the OIDC trusted-publishing auth exchange) —
+        # a global `npm install -g npm@latest` doesn't reliably land ahead of the
+        # runner's bundled npm on PATH, so it can silently keep publishing with an
+        # npm too old to ever attempt OIDC, falling back to classic (missing)
+        # token auth. Pinned to an exact version rather than `latest`, matching
+        # this repo's pinned-dependency posture elsewhere (SHA-pinned Actions).
+        run: npx --yes npm@11.5.1 publish --provenance
 
   create_release:
     name: Create GitHub Release
