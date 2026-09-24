@@ -39,6 +39,15 @@ export const EXTERNAL_CHAT_PROVIDERS: Record<ExternalChatProviderId, ExternalCha
     // "ask Google's AI this" — that's what this actually opens.
     buildUrl: (question) => `https://www.google.com/search?${new URLSearchParams({ q: question, udm: "50" })}`,
   },
+  geminiApp: {
+    id: "geminiApp",
+    name: "Gemini",
+    homeUrl: "https://gemini.google.com/app",
+    // The real Gemini app, distinct from the AI-Mode entry above. It has no
+    // known query-prefill parameter — opens the plain app; the question
+    // still goes to the clipboard.
+    buildUrl: null,
+  },
   groq: {
     id: "groq",
     name: "Groq",

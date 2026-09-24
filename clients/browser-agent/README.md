@@ -102,8 +102,11 @@ const result = await openExternalChat("claude", "Summarise this in one sentence:
 // result.copiedToClipboard — true if it's also on the clipboard, for pasting
 ```
 
-`EXTERNAL_CHAT_PROVIDERS` lists the four supported products for rendering a
-picker, the same way `PROVIDERS` does for the BYOK providers above.
+`EXTERNAL_CHAT_PROVIDERS` lists the five supported products for rendering a
+picker, the same way `PROVIDERS` does for the BYOK providers above: ChatGPT,
+Claude, Gemini (Google AI Mode's `udm=50` search, the only reliable prefill
+target for "ask Google's AI this"), Gemini (the real `gemini.google.com/app`,
+under id `geminiApp`, distinct from the AI-Mode entry), and Groq.
 
 **Why this needs a clipboard fallback at all:** the URL query parameters that
 pre-fill a provider's chat box (`claude.ai/new?q=...`, `chatgpt.com/?q=...`,

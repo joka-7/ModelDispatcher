@@ -91,7 +91,7 @@ export interface StreamOptions extends RequestOptions {
 /** A free, public AI chat web product `openExternalChat` can hand a question
  * off to — the no-API-key escape hatch, distinct from the `ProviderId`s above
  * (which all require a BYOK credential). */
-export type ExternalChatProviderId = "chatgpt" | "claude" | "gemini" | "groq";
+export type ExternalChatProviderId = "chatgpt" | "claude" | "gemini" | "geminiApp" | "groq";
 
 /** Static metadata about one external chat provider. */
 export interface ExternalChatProviderInfo {
