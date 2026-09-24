@@ -1,6 +1,6 @@
 # modeldispatcher-react-ui
 
-Three React components for the AI settings screen every one of your apps
+Five React components for the AI settings screen every one of your apps
 needs and has been building separately — split along lines that matter:
 **picking a preference is not the same thing as acting on it, and asking a
 question is not the same thing as getting a usable answer back.**
@@ -15,6 +15,18 @@ question is not the same thing as getting a usable answer back.**
   the prompt box), not on the settings screen — so clicking it is an
   expected "do something now" button, not a surprise redirect from a
   preferences page.
+- **`NoProviderPrompt`** — the chat window's own empty state when no
+  provider is configured yet. Without this, an app's chat screen typically
+  only told the user to go set an API key in Settings — the no-key path
+  (`AskExternallyButton`) existed in the framework but was never reachable
+  from the one place a user actually needs it. This renders both real
+  options together — "open Settings" and, once a favorite is saved, "ask it
+  for free right now" — right where the user is about to ask something.
+- **`ConversationIntro`** — a one-line, on-screen notice that the user is
+  talking to AI, shown before the first reply. Distinct from a *backend*
+  system prompt (the hidden instruction that shapes the model's persona,
+  which stays entirely app-specific): this is the visible counterpart the
+  person on the other side of the screen actually sees.
 - **`PasteExternalReply`** — the missing link after `AskExternallyButton`:
   once that opens a tab, there's no API call at all, so nothing can be
   parsed automatically. This captures whatever the user pastes back and
@@ -145,7 +157,8 @@ or your own store happens at the call site.
 | `onConfigChange` | `(config: AgentConfig) => void` | yes | Called with the full updated config on any add/remove/edit. |
 | `externalChatFavorite` | `ExternalChatProviderId \| null` | yes | The saved "ask externally" favorite, or `null`. |
 | `onExternalChatFavoriteChange` | `(favorite: ExternalChatProviderId \| null) => void` | yes | Called when the user picks or clears a favorite. Persist it yourself — this only reports the choice. |
-| `glossaryUrl` | `string` | no | Where "New to AI agents?" links. Defaults to this repo's interactive, trilingual [`docs/ai-glossary.html`](../../docs/ai-glossary.html). |
+| `glossaryUrl` | `string` | no | Where "New to AI agents?" links. Defaults to this repo's interactive, trilingual [`docs/ai-glossary.html`](../../docs/ai-glossary.html), served over GitHub Pages. |
+| `locale` | `"en" \| "fr" \| "he"` | no | Language for this component's own labels/buttons/hints. Defaults to `"en"`. `"he"` also renders the picker `dir="rtl"`. Provider names and their `infoText`/`infoUrl` (from `browser-agent`'s registry) stay in English in every locale — they're product names and provider-hosted links, not UI copy. |
 
 Each provider card lets the user pick a model from `MODEL_OPTIONS` (a
 curated shortlist per vendor, from `browser-agent`), add/remove pooled API
@@ -161,6 +174,33 @@ vendors not already configured.
 | `question` | `string` | no | Current prompt, carried into the opened product. |
 | `onExternalChat` | `(result: OpenExternalChatResult) => void` | no | Called after a click opens a tab — e.g. to show your own toast. |
 | `externalChatDeps` | `OpenExternalChatDeps` | no | Injected `window.open`/clipboard, for tests or a non-browser host. |
+| `locale` | `"en" \| "fr" \| "he"` | no | Language for this button's own label/status text. Defaults to `"en"`. |
+
+### `NoProviderPrompt` props
+
+| Prop | Type | Required | Purpose |
+| --- | --- | --- | --- |
+| `favorite` | `ExternalChatProviderId \| null` | yes | The saved favorite. When `null`, only "open Settings" is shown, plus a hint that saving a favorite skips API keys entirely. |
+| `question` | `string` | no | Current prompt, forwarded to the internal `AskExternallyButton`. |
+| `onOpenSettings` | `() => void` | yes | Called when the user clicks through to configure a real provider — wire it to however your app navigates to Settings. |
+| `onExternalChat` | `(result: OpenExternalChatResult) => void` | no | Forwarded to the internal `AskExternallyButton`. |
+| `externalChatDeps` | `OpenExternalChatDeps` | no | Forwarded to the internal `AskExternallyButton`. |
+| `locale` | `"en" \| "fr" \| "he"` | no | Language for this prompt's own text. Defaults to `"en"`. |
+
+Render this in place of your chat UI's existing "no provider configured"
+message — e.g. KanDOne's `ChatModal` used to render a bare
+`⚙️ Set API key to enable AI →` button with no free path at all; swapping
+that for `<NoProviderPrompt favorite={...} onOpenSettings={...} />` keeps
+the same trigger but adds the escape hatch that was already sitting unused
+in `ModelPicker`'s Settings screen.
+
+### `ConversationIntro` props
+
+| Prop | Type | Required | Purpose |
+| --- | --- | --- | --- |
+| `locale` | `"en" \| "fr" \| "he"` | no | Language for this notice's text. Defaults to `"en"`. |
+
+Render it once, above the first message in your chat UI.
 
 ### `PasteExternalReply` props
 

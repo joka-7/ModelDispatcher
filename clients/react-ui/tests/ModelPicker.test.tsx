@@ -2,6 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentConfig, ExternalChatProviderId } from "modeldispatcher-browser-agent";
+import type { Locale } from "../src/i18n.js";
 
 import { ModelPicker } from "../src/ModelPicker.js";
 
@@ -50,6 +51,7 @@ function render(props: {
   externalChatFavorite?: ExternalChatProviderId | null;
   onExternalChatFavoriteChange?: (favorite: ExternalChatProviderId | null) => void;
   glossaryUrl?: string;
+  locale?: Locale;
 }): void {
   act(() => {
     root.render(
@@ -272,7 +274,14 @@ describe("ModelPicker — favorite free AI app", () => {
     render({ config: EMPTY_CONFIG, onConfigChange: vi.fn() });
     const radios = Array.from(container.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
     const labels = radios.map((r) => r.closest("label")?.textContent);
-    expect(labels).toEqual(["None", "ChatGPT", "Claude", "Gemini (Google AI Mode)", "Groq"]);
+    expect(labels).toEqual([
+      "None",
+      "ChatGPT",
+      "Claude",
+      "Gemini (Google AI Mode)",
+      "Gemini",
+      "Groq",
+    ]);
   });
 
   it("checks the radio matching the current externalChatFavorite", () => {
@@ -304,12 +313,44 @@ describe("ModelPicker — glossary link", () => {
   it("links to the default glossary URL, or a custom one when given", () => {
     render({ config: EMPTY_CONFIG, onConfigChange: vi.fn() });
     expect((container.querySelector(".md-glossary-link") as HTMLAnchorElement).href).toContain(
-      "docs/ai-glossary.html",
+      "ai-glossary.html",
     );
 
     render({ config: EMPTY_CONFIG, onConfigChange: vi.fn(), glossaryUrl: "https://example.com/glossary" });
     expect((container.querySelector(".md-glossary-link") as HTMLAnchorElement).href).toBe(
       "https://example.com/glossary",
     );
+  });
+});
+
+describe("ModelPicker — locale", () => {
+  it("defaults to English, ltr", () => {
+    render({ config: EMPTY_CONFIG, onConfigChange: vi.fn() });
+    expect(container.querySelector(".md-picker")?.getAttribute("dir")).toBe("ltr");
+    expect(container.querySelector(".md-lead")?.textContent).toMatch(/^Add one or more providers/);
+  });
+
+  it("renders French labels when locale is fr", () => {
+    render({ config: EMPTY_CONFIG, onConfigChange: vi.fn(), locale: "fr" });
+    expect(container.querySelector(".md-picker")?.getAttribute("dir")).toBe("ltr");
+    expect(container.querySelector(".md-lead")?.textContent).toMatch(/^Ajoutez un ou plusieurs/);
+    expect(container.querySelector(".md-glossary-link")?.textContent).toContain("Nouveau dans les agents IA");
+  });
+
+  it("renders Hebrew labels and sets dir=rtl when locale is he", () => {
+    render({ config: EMPTY_CONFIG, onConfigChange: vi.fn(), locale: "he" });
+    expect(container.querySelector(".md-picker")?.getAttribute("dir")).toBe("rtl");
+    expect(container.querySelector(".md-favorite-lead")?.textContent).toBe(
+      "או שמרו אפליקציית AI חינמית מועדפת לשימוש מאוחר יותר:",
+    );
+  });
+
+  it("keeps provider names in English regardless of locale", () => {
+    render({
+      config: { providers: [{ provider: "gemini", model: "gemini-2.0-flash", apiKeys: ["k"] }], ollamaUrl: "" },
+      onConfigChange: vi.fn(),
+      locale: "he",
+    });
+    expect(container.querySelector(".md-provider-name")?.textContent).toContain("Google Gemini");
   });
 });

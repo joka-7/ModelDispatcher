@@ -26,9 +26,9 @@ import {
   type ProviderCredential,
   type ProviderId,
 } from "modeldispatcher-browser-agent";
+import { dirFor, resolveStrings, type Locale } from "./i18n.js";
 
-const DEFAULT_GLOSSARY_URL =
-  "https://cdn.jsdelivr.net/gh/joka-7/ModelDispatcher@main/docs/ai-glossary.html";
+const DEFAULT_GLOSSARY_URL = "https://joka-7.github.io/ModelDispatcher/ai-glossary.html";
 
 export interface ModelPickerProps {
   /** The active fallback list. Controlled — this component never mutates it. */
@@ -44,6 +44,10 @@ export interface ModelPickerProps {
   onExternalChatFavoriteChange: (favorite: ExternalChatProviderId | null) => void;
   /** Where "New to AI agents?" links. Defaults to this project's own glossary. */
   glossaryUrl?: string;
+  /** UI language for this component's own labels/buttons/hints. Provider
+   * names and their info links stay in English regardless (see `i18n.ts`).
+   * Defaults to English. Hebrew renders the picker's own markup `dir="rtl"`. */
+  locale?: Locale;
 }
 
 const PROVIDER_LIST = Object.values(PROVIDERS);
@@ -98,11 +102,13 @@ export function ModelPicker({
   externalChatFavorite,
   onExternalChatFavoriteChange,
   glossaryUrl = DEFAULT_GLOSSARY_URL,
+  locale = "en",
 }: ModelPickerProps): JSX.Element {
   const [pendingProvider, setPendingProvider] = useState<ProviderId | "">("");
   const availableProviders = PROVIDER_LIST.filter(
     (p) => !config.providers.some((cred) => cred.provider === p.id),
   );
+  const s = resolveStrings(locale).picker;
 
   function handleAddProvider(): void {
     if (!pendingProvider) return;
@@ -111,15 +117,10 @@ export function ModelPicker({
   }
 
   return (
-    <div className="md-picker">
-      <p className="md-lead">
-        Add one or more providers below — they're tried in order, with automatic
-        fallback if one runs out or fails.
-      </p>
+    <div className="md-picker" dir={dirFor(locale)}>
+      <p className="md-lead">{s.intro}</p>
 
-      {config.providers.length === 0 && (
-        <p className="md-empty-state">No providers added yet — add one below to get started.</p>
-      )}
+      {config.providers.length === 0 && <p className="md-empty-state">{s.emptyState}</p>}
 
       {config.providers.map((cred, index) => {
         const info = PROVIDERS[cred.provider];
@@ -134,7 +135,7 @@ export function ModelPicker({
               <button
                 type="button"
                 className="md-remove-btn"
-                aria-label={`Remove ${info.name}`}
+                aria-label={s.removeProviderLabel(info.name)}
                 onClick={() => onConfigChange(removeProvider(config, index))}
               >
                 ×
@@ -142,7 +143,7 @@ export function ModelPicker({
             </div>
 
             <div className="md-field">
-              <label htmlFor={`md-model-${cred.provider}`}>Model</label>
+              <label htmlFor={`md-model-${cred.provider}`}>{s.modelLabel}</label>
               <select
                 id={`md-model-${cred.provider}`}
                 className="md-select"
@@ -159,7 +160,7 @@ export function ModelPicker({
 
             {info.noKey ? (
               <div className="md-field">
-                <label htmlFor="md-ollama-url">{info.name} URL</label>
+                <label htmlFor="md-ollama-url">{s.urlLabel(info.name)}</label>
                 <input
                   id="md-ollama-url"
                   className="md-input"
@@ -171,7 +172,7 @@ export function ModelPicker({
               </div>
             ) : (
               <div className="md-field">
-                <label>{info.name} API key{cred.apiKeys.length > 1 ? "s" : ""}</label>
+                <label>{s.apiKeyLabel(info.name, cred.apiKeys.length)}</label>
                 <div className="md-key-list">
                   {cred.apiKeys.map((key, keyIndex) => (
                     <div className="md-key-row" key={keyIndex}>
@@ -186,7 +187,7 @@ export function ModelPicker({
                       <button
                         type="button"
                         className="md-remove-btn md-remove-btn-small"
-                        aria-label={`Remove this ${info.name} key`}
+                        aria-label={s.removeKeyLabel(info.name)}
                         onClick={() => onConfigChange(removeKey(config, index, keyIndex))}
                       >
                         ×
@@ -196,7 +197,7 @@ export function ModelPicker({
                 </div>
                 <div className="md-key-actions">
                   <button type="button" className="md-link-btn" onClick={() => onConfigChange(addKey(config, index))}>
-                    {cred.apiKeys.length === 0 ? "+ Add a key" : "+ Add another key"}
+                    {cred.apiKeys.length === 0 ? s.addKey : s.addAnotherKey}
                   </button>
                   <a className="md-help-link" href={info.infoUrl} target="_blank" rel="noreferrer">
                     {info.infoText}
@@ -212,26 +213,26 @@ export function ModelPicker({
         <div className="md-add-provider">
           <select
             className="md-select"
-            aria-label="Choose a provider to add"
+            aria-label={s.chooseProviderAriaLabel}
             value={pendingProvider}
             onChange={(event) => setPendingProvider(event.target.value as ProviderId | "")}
           >
-            <option value="">Choose a provider…</option>
+            <option value="">{s.chooseProviderPlaceholder}</option>
             {availableProviders.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
-                {p.free ? " (free)" : ""}
+                {p.free ? s.freeSuffix : ""}
               </option>
             ))}
           </select>
           <button type="button" className="md-add-btn" disabled={!pendingProvider} onClick={handleAddProvider}>
-            + Add provider
+            {s.addProviderButton}
           </button>
         </div>
       )}
 
-      <div className="md-favorite" role="radiogroup" aria-label="Favorite free AI app">
-        <p className="md-favorite-lead">Or save a favorite free AI app for later:</p>
+      <div className="md-favorite" role="radiogroup" aria-label={s.favoriteGroupAriaLabel}>
+        <p className="md-favorite-lead">{s.favoriteLead}</p>
         <div className="md-favorite-options">
           <label className="md-favorite-option">
             <input
@@ -240,7 +241,7 @@ export function ModelPicker({
               checked={externalChatFavorite === null}
               onChange={() => onExternalChatFavoriteChange(null)}
             />
-            None
+            {s.favoriteNone}
           </label>
           {EXTERNAL_CHAT_LIST.map((p) => (
             <label key={p.id} className="md-favorite-option">
@@ -254,13 +255,11 @@ export function ModelPicker({
             </label>
           ))}
         </div>
-        <p className="md-favorite-hint">
-          Just a saved preference — picking one here never opens anything.
-        </p>
+        <p className="md-favorite-hint">{s.favoriteHint}</p>
       </div>
 
       <a className="md-glossary-link" href={glossaryUrl} target="_blank" rel="noreferrer">
-        New to AI agents? What's a prompt, model, or API key?
+        {s.glossaryLinkText}
       </a>
     </div>
   );

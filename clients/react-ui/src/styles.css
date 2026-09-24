@@ -325,6 +325,71 @@
   color: var(--md-text-muted);
 }
 
+/* ---- NoProviderPrompt — the chat window's empty state ---- */
+
+.md-no-provider {
+  --md-accent: #2563eb;
+  --md-accent-ink: #ffffff;
+  --md-border: #e2e8f0;
+  --md-text-muted: #64748b;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-family: inherit;
+}
+
+.md-no-provider-lead {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.md-no-provider-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.md-no-provider-settings-btn {
+  padding: 0.5rem 1.1rem;
+  border: 1px solid var(--md-border);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.md-no-provider-settings-btn:hover {
+  background: var(--md-border);
+}
+
+.md-no-provider-divider {
+  font-size: 0.8rem;
+  color: var(--md-text-muted);
+}
+
+.md-no-provider-hint {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--md-text-muted);
+}
+
+/* ---- ConversationIntro — one-line "you're chatting with AI" notice ---- */
+
+.md-conversation-intro {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-family: inherit;
+}
+
 /* ---- PasteExternalReply — captures the pasted answer from an external chat ---- */
 
 .md-paste-reply {
