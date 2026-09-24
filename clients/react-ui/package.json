@@ -1,6 +1,6 @@
 {
   "name": "modeldispatcher-react-ui",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "description": "Two React components for every app's AI settings: ModelPicker (a pure settings screen — add multiple providers, each with a model picked from a list and pooled API keys, plus saving a favorite free AI app; never navigates) and AskExternallyButton (opens the saved favorite, meant to live next to the prompt box) — so the AI settings screen looks the same everywhere instead of each app hand-rolling its own.",
   "license": "MIT",
   "repository": {
