@@ -182,6 +182,16 @@ jobs:
             exit 1
           fi
 
+      - name: Debug OIDC environment (temporary, remove once publish works)
+        working-directory: clients/typescript
+        run: |
+          echo "ACTIONS_ID_TOKEN_REQUEST_URL set: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
+          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN set: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+yes}"
+          npx --yes npm@11.5.1 --version
+          cat "$NPM_CONFIG_USERCONFIG" 2>&1 || echo "no userconfig file"
+          npm config get registry
+          npm whoami --registry=https://registry.npmjs.org/ 2>&1 || true
+
       - name: Publish to npm
         working-directory: clients/typescript
         # npx guarantees a genuinely new-enough npm runs this specific command
@@ -191,7 +201,7 @@ jobs:
         # npm too old to ever attempt OIDC, falling back to classic (missing)
         # token auth. Pinned to an exact version rather than `latest`, matching
         # this repo's pinned-dependency posture elsewhere (SHA-pinned Actions).
-        run: npx --yes npm@11.5.1 publish --provenance
+        run: npx --yes npm@11.5.1 publish --provenance --loglevel verbose
 
   publish_browser_agent:
     name: Publish modeldispatcher-browser-agent
@@ -234,6 +244,16 @@ jobs:
             exit 1
           fi
 
+      - name: Debug OIDC environment (temporary, remove once publish works)
+        working-directory: clients/browser-agent
+        run: |
+          echo "ACTIONS_ID_TOKEN_REQUEST_URL set: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
+          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN set: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+yes}"
+          npx --yes npm@11.5.1 --version
+          cat "$NPM_CONFIG_USERCONFIG" 2>&1 || echo "no userconfig file"
+          npm config get registry
+          npm whoami --registry=https://registry.npmjs.org/ 2>&1 || true
+
       - name: Publish to npm
         working-directory: clients/browser-agent
         # npx guarantees a genuinely new-enough npm runs this specific command
@@ -243,7 +263,7 @@ jobs:
         # npm too old to ever attempt OIDC, falling back to classic (missing)
         # token auth. Pinned to an exact version rather than `latest`, matching
         # this repo's pinned-dependency posture elsewhere (SHA-pinned Actions).
-        run: npx --yes npm@11.5.1 publish --provenance
+        run: npx --yes npm@11.5.1 publish --provenance --loglevel verbose
 
   publish_react_ui:
     name: Publish modeldispatcher-react-ui
@@ -291,6 +311,16 @@ jobs:
             exit 1
           fi
 
+      - name: Debug OIDC environment (temporary, remove once publish works)
+        working-directory: clients/react-ui
+        run: |
+          echo "ACTIONS_ID_TOKEN_REQUEST_URL set: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
+          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN set: ${ACTIONS_ID_TOKEN_REQUEST_TOKEN:+yes}"
+          npx --yes npm@11.5.1 --version
+          cat "$NPM_CONFIG_USERCONFIG" 2>&1 || echo "no userconfig file"
+          npm config get registry
+          npm whoami --registry=https://registry.npmjs.org/ 2>&1 || true
+
       - name: Publish to npm
         working-directory: clients/react-ui
         # npx guarantees a genuinely new-enough npm runs this specific command
@@ -300,7 +330,7 @@ jobs:
         # npm too old to ever attempt OIDC, falling back to classic (missing)
         # token auth. Pinned to an exact version rather than `latest`, matching
         # this repo's pinned-dependency posture elsewhere (SHA-pinned Actions).
-        run: npx --yes npm@11.5.1 publish --provenance
+        run: npx --yes npm@11.5.1 publish --provenance --loglevel verbose
 
   create_release:
     name: Create GitHub Release
