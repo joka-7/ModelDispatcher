@@ -18,6 +18,7 @@ import {
   type OpenExternalChatDeps,
   type OpenExternalChatResult,
 } from "modeldispatcher-browser-agent";
+import { dirFor, resolveStrings, type Locale } from "./i18n.js";
 
 export interface AskExternallyButtonProps {
   /** The saved favorite (see `ModelPicker`'s `externalChatFavorite` /
@@ -31,6 +32,8 @@ export interface AskExternallyButtonProps {
   onExternalChat?: (result: OpenExternalChatResult) => void;
   /** Injected `openExternalChat` deps — for tests or a non-browser host. */
   externalChatDeps?: OpenExternalChatDeps;
+  /** UI language for this button's own label/status text. Defaults to English. */
+  locale?: Locale;
 }
 
 export function AskExternallyButton({
@@ -38,12 +41,14 @@ export function AskExternallyButton({
   question,
   onExternalChat,
   externalChatDeps,
+  locale = "en",
 }: AskExternallyButtonProps): JSX.Element | null {
   const [lastResult, setLastResult] = useState<OpenExternalChatResult | null>(null);
 
   if (favorite === null) return null;
   const activeFavorite = favorite;
   const info = EXTERNAL_CHAT_PROVIDERS[activeFavorite];
+  const s = resolveStrings(locale).askExternally;
 
   async function handleClick(): Promise<void> {
     const result = await openExternalChat(activeFavorite, question ?? "", externalChatDeps);
@@ -52,15 +57,15 @@ export function AskExternallyButton({
   }
 
   return (
-    <div className="md-ask-externally">
+    <div className="md-ask-externally" dir={dirFor(locale)}>
       <button type="button" className="md-ask-externally-btn" onClick={() => void handleClick()}>
-        Ask {info.name}
+        {s.askButton(info.name)}
       </button>
       {lastResult && (
         <p className="md-status" role="status">
-          Opened {info.name}
-          {lastResult.prefilled ? " with your question filled in" : ""}
-          {lastResult.copiedToClipboard ? " — also copied to your clipboard." : "."}
+          {s.openedPrefix(info.name)}
+          {lastResult.prefilled ? s.openedWithQuestion : ""}
+          {lastResult.copiedToClipboard ? s.copiedToClipboard : "."}
         </p>
       )}
     </div>

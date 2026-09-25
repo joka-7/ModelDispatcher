@@ -57,17 +57,23 @@ ModelDispatcher/
 │   │   │   └── settings.png
 │   │   ├── src/
 │   │   │   ├── AskExternallyButton.tsx
+│   │   │   ├── ConversationIntro.tsx
 │   │   │   ├── ModelPicker.tsx
+│   │   │   ├── NoProviderPrompt.tsx
 │   │   │   ├── PasteExternalReply.tsx
+│   │   │   ├── i18n.ts
 │   │   │   ├── index.ts
 │   │   │   └── styles.css
 │   │   ├── tests/
 │   │   │   ├── AskExternallyButton.test.tsx
+│   │   │   ├── ConversationIntro.test.tsx
 │   │   │   ├── ModelPicker.test.tsx
+│   │   │   ├── NoProviderPrompt.test.tsx
 │   │   │   ├── PasteExternalReply.test.tsx
 │   │   │   └── setup.ts
 │   │   ├── .gitignore
 │   │   ├── README.md                     # Modeldispatcher-react-ui
+│   │   ├── package-lock.json
 │   │   ├── package.json
 │   │   ├── tsconfig.build.json
 │   │   ├── tsconfig.json

@@ -10,11 +10,12 @@ function fakeClipboard(opts: { fails?: boolean } = {}) {
 }
 
 describe("EXTERNAL_CHAT_PROVIDERS", () => {
-  it("covers exactly chatgpt, claude, gemini, and groq", () => {
+  it("covers exactly chatgpt, claude, gemini, geminiApp, and groq", () => {
     expect(Object.keys(EXTERNAL_CHAT_PROVIDERS).sort()).toEqual([
       "chatgpt",
       "claude",
       "gemini",
+      "geminiApp",
       "groq",
     ]);
   });
@@ -49,6 +50,18 @@ describe("openExternalChat", () => {
 
     expect(result.prefilled).toBe(false);
     expect(result.url).toBe(EXTERNAL_CHAT_PROVIDERS.groq.homeUrl);
+    expect(open).toHaveBeenCalledWith(result.url);
+  });
+
+  it("geminiApp opens the real Gemini app, distinct from the AI-Mode gemini entry", async () => {
+    const open = vi.fn();
+    const result = await openExternalChat("geminiApp", "what's the weather model?", {
+      open,
+      clipboard: fakeClipboard(),
+    });
+
+    expect(result.prefilled).toBe(false);
+    expect(result.url).toBe("https://gemini.google.com/app");
     expect(open).toHaveBeenCalledWith(result.url);
   });
 

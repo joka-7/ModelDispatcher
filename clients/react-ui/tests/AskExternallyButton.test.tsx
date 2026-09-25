@@ -82,4 +82,18 @@ describe("AskExternallyButton", () => {
 
     expect(open).toHaveBeenCalledWith("https://groq.com/");
   });
+
+  it("renders French and Hebrew labels, keeping the provider name in English", () => {
+    act(() => {
+      root.render(<AskExternallyButton favorite="claude" locale="fr" />);
+    });
+    expect(container.querySelector("button")?.textContent).toBe("Demander à Claude");
+    expect(container.querySelector(".md-ask-externally")?.getAttribute("dir")).toBe("ltr");
+
+    act(() => {
+      root.render(<AskExternallyButton favorite="claude" locale="he" />);
+    });
+    expect(container.querySelector("button")?.textContent).toBe("שאלו את Claude");
+    expect(container.querySelector(".md-ask-externally")?.getAttribute("dir")).toBe("rtl");
+  });
 });
