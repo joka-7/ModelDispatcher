@@ -423,14 +423,14 @@ const STRINGS = {
       },
       {
         letter: "A", name: "Agent",
-        def: "A program that uses a model in a loop: it can act on what the model says (like using a tool or looking something up), feed the result back in, and repeat.",
-        example: "“AI agent” just means an AI that can act and iterate — not a different technology from the model underneath. Agent = model + harness.",
+        def: "The whole working thing: a model plus a harness, set loose on a goal. It decides what to do next, acts, checks the result, and keeps going until the job is done.",
+        example: "Claude Code is an agent: Claude (the model) plus the code around it (the harness). The same model with no harness is just a chatbot.",
         analogy: "Like handing a task to an assistant instead of placing one order — they can go check something, come back, and try again on their own.",
       },
       {
         letter: "H", name: "Harness",
-        def: "The code wrapped around a model that gives it tools, memory, and a loop: it runs the tools, feeds the results back, and decides when to stop.",
-        example: "A model alone can only reply with text. Add a harness and it can read files, run commands, and retry. Harness + model = agent.",
+        def: "Just the machinery around a model — the code that hands it tools, memory, and a loop. On its own it has no intelligence and no goal; it only runs what the model asks for.",
+        example: "Swap the model inside and the harness stays the same; remove the harness and the model can only reply with text. Harness + model = agent.",
         analogy: "Like the kitchen around the chef — the stove, knives, and ticket system. The chef brings the skill; the kitchen lets them actually act.",
       },
       {
@@ -530,14 +530,14 @@ const STRINGS = {
       },
       {
         letter: "A", name: "Agent",
-        def: "Un programme qui utilise un modèle en boucle : il peut agir selon ce que dit le modèle (utiliser un outil, faire une recherche), réinjecter le résultat, et recommencer.",
-        example: "Un « agent IA » est simplement une IA capable d'agir et d'itérer — pas une technologie différente du modèle qui la fait fonctionner. Agent = modèle + harnais.",
+        def: "L'ensemble qui fonctionne : un modèle plus un harnais, lancé sur un objectif. Il décide quoi faire ensuite, agit, vérifie le résultat, et continue jusqu'à ce que le travail soit fait.",
+        example: "Claude Code est un agent : Claude (le modèle) plus le code qui l'entoure (le harnais). Le même modèle sans harnais n'est qu'un chatbot.",
         analogy: "Comme confier une tâche à un assistant plutôt qu'une simple commande — il peut aller vérifier quelque chose, revenir, et réessayer tout seul.",
       },
       {
         letter: "H", name: "Harnais (harness)",
-        def: "Le code qui entoure un modèle et lui donne des outils, de la mémoire et une boucle : il exécute les outils, réinjecte les résultats et décide quand s'arrêter.",
-        example: "Seul, un modèle ne peut répondre que par du texte. Avec un harnais, il peut lire des fichiers, lancer des commandes et réessayer. Harnais + modèle = agent.",
+        def: "Uniquement la mécanique autour d'un modèle — le code qui lui fournit des outils, de la mémoire et une boucle. Seul, il n'a ni intelligence ni objectif ; il exécute simplement ce que le modèle demande.",
+        example: "Changez le modèle à l'intérieur, le harnais reste le même ; retirez le harnais, et le modèle ne peut répondre que par du texte. Harnais + modèle = agent.",
         analogy: "Comme la cuisine autour du chef — le fourneau, les couteaux, le système de commandes. Le chef apporte le talent ; la cuisine lui permet vraiment d'agir.",
       },
       {
@@ -637,14 +637,14 @@ const STRINGS = {
       },
       {
         letter: "ס", name: "סוכן (agent)",
-        def: "תוכנה שמשתמשת במודל בלולאה: היא יכולה לפעול לפי מה שהמודל אומר (כמו להשתמש בכלי או לחפש משהו), להזין את התוצאה בחזרה, ולחזור על התהליך.",
-        example: "“סוכן AI” פשוט אומר AI שיכול לפעול ולחזור על עצמו — לא טכנולוגיה שונה מהותית מהמודל שמריץ אותו. סוכן = מודל + רתמה.",
+        def: "השלם שעובד: מודל ועוד רתמה, ששוחרר אל מטרה. הוא מחליט מה לעשות הלאה, פועל, בודק את התוצאה, וממשיך עד שהעבודה גמורה.",
+        example: "Claude Code הוא סוכן: Claude (המודל) ועוד הקוד שסביבו (הרתמה). אותו מודל בלי רתמה הוא סתם צ'אטבוט.",
         analogy: "כמו למסור משימה לעוזר במקום הזמנה בודדת — הוא יכול ללכת לבדוק משהו, לחזור, ולנסות שוב לבד.",
       },
       {
         letter: "ר", name: "רתמה (harness)",
-        def: "הקוד שעוטף מודל ונותן לו כלים, זיכרון ולולאה: הוא מריץ את הכלים, מזין את התוצאות בחזרה ומחליט מתי לעצור.",
-        example: "מודל לבדו יכול רק להשיב בטקסט. הוסיפו לו רתמה והוא יכול לקרוא קבצים, להריץ פקודות ולנסות שוב. רתמה + מודל = סוכן.",
+        def: "רק המנגנון שסביב המודל — הקוד שנותן לו כלים, זיכרון ולולאה. לבדו אין לו אינטליגנציה ואין לו מטרה; הוא רק מריץ את מה שהמודל מבקש.",
+        example: "החליפו את המודל שבפנים והרתמה נשארת אותה רתמה; הסירו את הרתמה והמודל יכול רק להשיב בטקסט. רתמה + מודל = סוכן.",
         analogy: "כמו המטבח שסביב השף — הכיריים, הסכינים ומערכת ההזמנות. השף מביא את המיומנות; המטבח מאפשר לו באמת לפעול.",
       },
       {
