@@ -1,6 +1,6 @@
 /** Root layout for the App Router template. */
 
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import "./globals.css";
 

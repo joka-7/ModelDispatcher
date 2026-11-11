@@ -31,7 +31,7 @@ vercel-app/
 │   ├── components/KeyWizard.tsx
 │   ├── page.tsx             # dispatch console + outcome rendering
 │   └── layout.tsx
-├── package.json             # modeldispatcher-client + firebase + next
+├── package.json             # modeldispatcher-client + firebase + next (overrides @grpc/grpc-js: see below)
 ├── vercel.json              # function config
 └── .env.example
 ```
@@ -126,6 +126,14 @@ pytest api/tests
 # Frontend typecheck:
 npm run typecheck
 ```
+
+## Dependency note: `@grpc/grpc-js` override
+
+`package.json` overrides `@grpc/grpc-js` to a patched 1.14 release. Firebase's web SDK pulls it in
+through `@firebase/firestore`, which pins 1.9.x, a range with known high-severity advisories.
+This template never imports Firestore (only `firebase/app`, `app-check` and `auth`), so forcing the
+newer version can't break it. If you add Firestore, drop the override once Firebase ships a fixed
+range, and re-run `npm audit`.
 
 ## Going to production
 

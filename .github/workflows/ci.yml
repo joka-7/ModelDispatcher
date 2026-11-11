@@ -205,9 +205,11 @@ jobs:
 
       - name: Install template dependencies
         # npm install, not ci: the file: dependency swap above intentionally
-        # diverges from package-lock.json.
+        # diverges from package-lock.json. --install-links copies the client
+        # in rather than symlinking it: Next's Turbopack won't resolve a
+        # package that lives outside the project root.
         working-directory: templates/vercel-app
-        run: npm install
+        run: npm install --install-links
 
       - name: Type-check
         working-directory: templates/vercel-app

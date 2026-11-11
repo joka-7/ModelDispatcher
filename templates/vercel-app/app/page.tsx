@@ -16,6 +16,7 @@
 
 "use client";
 
+import type { JSX } from "react";
 import { useCallback, useState } from "react";
 import type { DispatchOutcome } from "modeldispatcher-client";
 import { useGateway } from "modeldispatcher-client/react";

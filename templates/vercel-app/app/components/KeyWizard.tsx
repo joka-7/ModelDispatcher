@@ -8,6 +8,7 @@
 
 "use client";
 
+import type { JSX } from "react";
 import type { WizardState } from "modeldispatcher-client/react";
 
 export interface KeyWizardProps {
