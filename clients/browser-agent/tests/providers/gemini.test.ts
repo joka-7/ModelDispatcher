@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { completeGemini, streamGemini } from "../../src/providers/gemini.js";
+import { completeGemini, completeWithToolsGemini, geminiSchema, streamGemini } from "../../src/providers/gemini.js";
+import { history, mockReply, portfolio, quote, sentBody } from "./toolFixtures.js";
 import type { ProviderCallConfig } from "../../src/types.js";
 
 const cfg: ProviderCallConfig = { provider: "gemini", apiKey: "AIza-x", model: "gemini-2.0-flash", ollamaUrl: "" };
@@ -66,5 +67,88 @@ describe("streamGemini", () => {
 
     expect(chunks).toEqual(["Hel", "Hello"]);
     expect(full).toBe("Hello");
+  });
+});
+
+describe("completeWithToolsGemini", () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const cfg: ProviderCallConfig = { provider: "gemini", apiKey: "AIza", model: "gemini-2.5-flash", ollamaUrl: "" };
+
+  it("declares functions Gemini accepts and echoes the thought signature", async () => {
+    const fetchMock = mockReply({ candidates: [{ content: { parts: [{ text: "190.5" }] } }] });
+
+    await completeWithToolsGemini(cfg, history, [quote, portfolio], {});
+
+    const body = sentBody(fetchMock);
+    expect(body["tools"]).toEqual([
+      {
+        functionDeclarations: [
+          {
+            name: "get_quote",
+            description: "Latest price",
+            parameters: { type: "object", properties: { symbol: { type: "string" } }, required: ["symbol"] },
+          },
+          { name: "get_portfolio", description: "The user's holdings" },
+        ],
+      },
+    ]);
+    expect((body["contents"] as unknown[]).slice(1)).toEqual([
+      {
+        role: "model",
+        parts: [
+          { text: "Checking." },
+          { functionCall: { name: "get_quote", args: { symbol: "AAPL" } }, thoughtSignature: "sig-1" },
+          { functionCall: { name: "get_portfolio", args: {} }, thoughtSignature: "skip_thought_signature_validator" },
+        ],
+      },
+      {
+        role: "user",
+        parts: [
+          { functionResponse: { name: "get_quote", response: { result: "190.5" } } },
+          { functionResponse: { name: "get_portfolio", response: { error: "tool error: locked" } } },
+        ],
+      },
+    ]);
+  });
+
+  it("decodes function calls with their signature and no id", async () => {
+    mockReply({
+      candidates: [
+        { content: { parts: [{ functionCall: { name: "get_quote", args: { symbol: "MSFT" } }, thoughtSignature: "sig-2" }] } },
+      ],
+    });
+
+    const turn = await completeWithToolsGemini(cfg, history.slice(0, 2), [quote], {});
+
+    expect(turn).toEqual({
+      text: "",
+      toolCalls: [{ id: "", name: "get_quote", arguments: { symbol: "MSFT" }, signature: "sig-2" }],
+    });
+  });
+
+  it("strips unsupported schema keys at every depth", () => {
+    expect(
+      geminiSchema({ $schema: "x", type: "object", properties: { a: { type: "object", additionalProperties: true } } }),
+    ).toEqual({ type: "object", properties: { a: { type: "object" } } });
+  });
+
+  it.each([
+    ["no candidates", { promptFeedback: { blockReason: "SAFETY" } }, "SAFETY"],
+    ["a safety stop", { candidates: [{ finishReason: "SAFETY", content: { parts: [] } }] }, "SAFETY"],
+    ["a malformed call", { candidates: [{ finishReason: "MALFORMED_FUNCTION_CALL" }] }, "MALFORMED_FUNCTION_CALL"],
+    ["an empty turn", { candidates: [{ finishReason: "STOP", content: { parts: [] } }] }, "empty turn"],
+    [
+      "a call cut off by the token limit",
+      { candidates: [{ finishReason: "MAX_TOKENS", content: { parts: [{ functionCall: { name: "get_quote", args: {} } }] } }] },
+      "out of tokens",
+    ],
+  ])("throws on %s, so the loop falls back", async (_case, reply, message) => {
+    mockReply(reply);
+
+    await expect(completeWithToolsGemini(cfg, history.slice(0, 2), [quote], {})).rejects.toThrow(message);
   });
 });

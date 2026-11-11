@@ -209,6 +209,11 @@ never navigates); `AskExternallyButton` is the separate "ask a favorite free
 app instead" action. Full props and the settings/action split rationale:
 [`clients/react-ui/README.md`](../clients/react-ui/README.md).
 
+For a chat that should read or change the user's own data, `runWithTools`
+lets the model call functions that run in the browser, with the same
+multi-provider fallback: see
+[`clients/browser-agent/README.md`](../clients/browser-agent/README.md#tool-calling-runwithtools).
+
 ### Making the dispatcher optional per app
 
 Rolling this into an app that already has its own AI settings screen and its

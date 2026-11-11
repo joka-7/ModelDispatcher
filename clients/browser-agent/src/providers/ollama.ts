@@ -7,7 +7,14 @@
  */
 
 import { consumeLines, fetchWithRetry, validateOllamaUrl } from "../http.js";
-import type { ChatMessage, ProviderCallConfig, RequestOptions } from "../types.js";
+import type {
+  ChatMessage,
+  ProviderCallConfig,
+  RequestOptions,
+  ToolChatMessage,
+  ToolSpec,
+  ToolTurn,
+} from "../types.js";
 
 const DEFAULT_MAX_TOKENS = 1024;
 
@@ -78,4 +85,69 @@ export async function streamOllama(
     }
   });
   return full;
+}
+
+function toToolApiMessages(messages: readonly ToolChatMessage[], systemInstruction?: string) {
+  const hasSystemTurn = messages.some((m) => m.role === "system");
+  const system = !hasSystemTurn && systemInstruction ? [{ role: "system", content: systemInstruction }] : [];
+  return [
+    ...system,
+    ...messages.flatMap((m): Record<string, unknown>[] => {
+      if (m.role === "tool") return m.results.map((r) => ({ role: "tool", tool_name: r.name, content: r.content }));
+      if ("toolCalls" in m) {
+        return [
+          {
+            role: "assistant",
+            content: m.content,
+            tool_calls: m.toolCalls.map((c) => ({ function: { name: c.name, arguments: c.arguments } })),
+          },
+        ];
+      }
+      return [{ role: m.role, content: m.content }];
+    }),
+  ];
+}
+
+interface OllamaToolCall {
+  function?: { name?: string; arguments?: Record<string, unknown> };
+}
+
+/** One non-streaming turn with tools available; needs a tool-capable local model. */
+export async function completeWithToolsOllama(
+  cfg: ProviderCallConfig,
+  messages: readonly ToolChatMessage[],
+  tools: readonly ToolSpec[],
+  options: RequestOptions = {},
+): Promise<ToolTurn> {
+  const baseUrl = validateOllamaUrl(cfg.ollamaUrl);
+  const res = await fetchWithRetry(
+    `${baseUrl}/api/chat`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: cfg.model,
+        messages: toToolApiMessages(messages, options.systemInstruction),
+        stream: false,
+        options: { num_predict: options.maxTokens ?? DEFAULT_MAX_TOKENS },
+        ...(tools.length
+          ? {
+              tools: tools.map((t) => ({
+                type: "function",
+                function: { name: t.name, description: t.description, parameters: t.parameters },
+              })),
+            }
+          : {}),
+      }),
+    },
+    options.signal,
+  );
+  if (!res.ok) throw new Error(`Ollama error: HTTP ${res.status}. Is Ollama running?`);
+  const data = await res.json();
+  if (!data.message) throw new Error("Ollama returned no answer");
+  const calls: OllamaToolCall[] = data.message.tool_calls ?? [];
+  return {
+    text: data.message?.content ?? "",
+    toolCalls: calls.map((c) => ({ id: "", name: c.function?.name ?? "", arguments: c.function?.arguments ?? {} })),
+  };
 }

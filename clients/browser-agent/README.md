@@ -85,6 +85,64 @@ instead of silently retried on the next provider — the caller has already
 rendered a partial answer, and switching providers mid-stream would
 duplicate or contradict it rather than complete it.
 
+## Tool calling: `runWithTools`
+
+Let the model call functions that run in the browser — reading the user's
+own data from the device, looking something up — until it answers. The same
+bounded loop as the Python core's `AgentLoop`, with every provider:
+
+```ts
+import { loadConfig, runWithTools, type Tool } from "modeldispatcher-browser-agent";
+
+const getHoldings: Tool = {
+  spec: {
+    name: "get_holdings",
+    description: "The user's holdings, read from this device",
+    parameters: { type: "object", properties: {} },
+  },
+  run: async () => JSON.stringify(await store.holdings()),
+};
+
+const out = await runWithTools(loadConfig(), [{ role: "user", content: "Am I too concentrated?" }], {
+  tools: [getHoldings],
+  systemInstruction: "Answer from the user's own data.",
+  onToolResult: (call) => showStatus(`Looked at ${call.name}…`),
+});
+out.text;       // the answer
+out.toolsUsed;  // ["get_holdings"]
+out.messages;   // the whole conversation, tool turns included, to continue it
+```
+
+- **Every provider.** Gemini, OpenAI, Anthropic, Groq and Ollama (a
+  tool-capable local model). The history is kept in one neutral form
+  (`ToolChatMessage`) and translated to each provider's format per turn, so
+  fallback still works: if a provider fails on turn 3, the next one picks up
+  the conversation where it stopped.
+- **Tools run on the device, one at a time, in the order asked**, so a write
+  lands before a later read. Whatever a tool returns is what the model reads;
+  if it throws, or the model names a tool that doesn't exist, the model gets
+  the error text and can recover instead of the run failing.
+- **Bounded.** At most `maxSteps` model turns (default 6). A run that hits the
+  limit returns `stopReason: "max_steps"`: the last turn's tools have run, but
+  the model never saw their results, and `text` is whatever it said alongside
+  asking for them (often empty).
+- **A blocked or cut-off reply counts as a failure**, not an answer: a safety
+  block, a refusal, or a tool call cut off by the token limit moves the turn to
+  the next configured provider, as an HTTP error would.
+- **One system prompt.** `systemInstruction` if given, else every system turn
+  in `messages`, joined; the same text whichever provider runs.
+- **Not streamed.** A turn can end in tool calls rather than text, so there is
+  no single text stream; use `onToolResult` to show progress.
+- **Schemas.** Keep `parameters` to the JSON Schema subset every provider
+  accepts (`type`, `properties`, `required`, `description`, `enum`, `items`).
+  Gemini rejects the rest, so `additionalProperties` and `$schema` are dropped
+  for it, and a tool with no properties is declared without `parameters`;
+  `default`, `const`, `$ref`/`$defs` and `oneOf` are not translated, so avoid
+  them. After a fallback into Gemini, calls another provider made carry
+  Google's placeholder thought signature.
+- **Tools don't receive the abort signal**: an abort takes effect at the next
+  provider call.
+
 ## No-API-key escape hatch: `openExternalChat`
 
 For a user with no API key configured (or who just doesn't want to set one
@@ -188,7 +246,8 @@ the non-Vite env var forms: [`docs/USAGE.md`](../../docs/USAGE.md).
 This package owns the generic "talk to a provider" plumbing: provider
 configs, request/response translation, SSE/NDJSON stream parsing, retry on
 429/5xx, cross-provider/cross-key fallback dispatch, timeout/abort handling,
-Ollama URL validation, and chat-history normalisation. It deliberately does
+Ollama URL validation, chat-history normalisation, and the tool-calling loop
+(translating tool calls and results per provider). It deliberately does
 **not** know about any app's actual
 prompts or business logic (job-search coaching, trip parsing, whatever) —
 that stays in each app, calling through this the same way

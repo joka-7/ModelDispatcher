@@ -146,20 +146,24 @@ ModelDispatcher/
 │   │   │   ├── index.ts
 │   │   │   ├── messages.ts
 │   │   │   ├── registry.ts
+│   │   │   ├── toolMessages.ts
+│   │   │   ├── tools.ts
 │   │   │   └── types.ts
 │   │   ├── tests/
 │   │   │   ├── providers/
 │   │   │   │   ├── anthropic.test.ts
 │   │   │   │   ├── gemini.test.ts
 │   │   │   │   ├── ollama.test.ts
-│   │   │   │   └── openaiCompatible.test.ts
+│   │   │   │   ├── openaiCompatible.test.ts
+│   │   │   │   └── toolFixtures.ts
 │   │   │   ├── agent.test.ts
 │   │   │   ├── config.test.ts
 │   │   │   ├── externalChat.test.ts
 │   │   │   ├── externalChatFavorite.test.ts
 │   │   │   ├── features.test.ts
 │   │   │   ├── http.test.ts
-│   │   │   └── messages.test.ts
+│   │   │   ├── messages.test.ts
+│   │   │   └── tools.test.ts
 │   │   ├── .gitignore
 │   │   ├── README.md                     # Modeldispatcher-browser-agent
 │   │   ├── package-lock.json

@@ -29,7 +29,7 @@ import type {
 
 /** One candidate that failed, kept only to compose
  * {@link AllProvidersExhaustedError}'s message. */
-interface FailedAttempt {
+export interface FailedAttempt {
   readonly provider: string;
   readonly error: string;
 }
@@ -64,7 +64,7 @@ export class AllProvidersExhaustedError extends Error {
  * provider with no usable credential is never offered as a candidate at
  * all, the same rule the Python core's registry-building applies.
  */
-function candidatesOf(cfg: AgentConfig): ProviderCallConfig[] {
+export function candidatesOf(cfg: AgentConfig): ProviderCallConfig[] {
   const candidates: ProviderCallConfig[] = [];
   for (const cred of cfg.providers) {
     if (cred.provider === "ollama") {
