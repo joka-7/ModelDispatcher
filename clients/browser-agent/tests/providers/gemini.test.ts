@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { completeGemini, streamGemini } from "../../src/providers/gemini.js";
+import { completeGemini, completeWithToolsGemini, geminiSchema, streamGemini } from "../../src/providers/gemini.js";
+import { history, mockReply, portfolio, quote, sentBody } from "./toolFixtures.js";
 import type { ProviderCallConfig } from "../../src/types.js";
 
 const cfg: ProviderCallConfig = { provider: "gemini", apiKey: "AIza-x", model: "gemini-2.0-flash", ollamaUrl: "" };
@@ -66,5 +67,72 @@ describe("streamGemini", () => {
 
     expect(chunks).toEqual(["Hel", "Hello"]);
     expect(full).toBe("Hello");
+  });
+});
+
+describe("completeWithToolsGemini", () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const cfg: ProviderCallConfig = { provider: "gemini", apiKey: "AIza", model: "gemini-2.5-flash", ollamaUrl: "" };
+
+  it("declares functions Gemini accepts and echoes the thought signature", async () => {
+    const fetchMock = mockReply({ candidates: [{ content: { parts: [{ text: "190.5" }] } }] });
+
+    await completeWithToolsGemini(cfg, history, [quote, portfolio], {});
+
+    const body = sentBody(fetchMock);
+    expect(body["tools"]).toEqual([
+      {
+        functionDeclarations: [
+          {
+            name: "get_quote",
+            description: "Latest price",
+            parameters: { type: "object", properties: { symbol: { type: "string" } }, required: ["symbol"] },
+          },
+          { name: "get_portfolio", description: "The user's holdings" },
+        ],
+      },
+    ]);
+    expect((body["contents"] as unknown[]).slice(1)).toEqual([
+      {
+        role: "model",
+        parts: [
+          { text: "Checking." },
+          { functionCall: { name: "get_quote", args: { symbol: "AAPL" } }, thoughtSignature: "sig-1" },
+          { functionCall: { name: "get_portfolio", args: {} } },
+        ],
+      },
+      {
+        role: "user",
+        parts: [
+          { functionResponse: { name: "get_quote", response: { result: "190.5" } } },
+          { functionResponse: { name: "get_portfolio", response: { error: "tool error: locked" } } },
+        ],
+      },
+    ]);
+  });
+
+  it("decodes function calls with their signature and no id", async () => {
+    mockReply({
+      candidates: [
+        { content: { parts: [{ functionCall: { name: "get_quote", args: { symbol: "MSFT" } }, thoughtSignature: "sig-2" }] } },
+      ],
+    });
+
+    const turn = await completeWithToolsGemini(cfg, history.slice(0, 2), [quote], {});
+
+    expect(turn).toEqual({
+      text: "",
+      toolCalls: [{ id: "", name: "get_quote", arguments: { symbol: "MSFT" }, signature: "sig-2" }],
+    });
+  });
+
+  it("strips unsupported schema keys at every depth", () => {
+    expect(
+      geminiSchema({ $schema: "x", type: "object", properties: { a: { type: "object", additionalProperties: true } } }),
+    ).toEqual({ type: "object", properties: { a: { type: "object" } } });
   });
 });

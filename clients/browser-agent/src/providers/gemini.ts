@@ -4,8 +4,16 @@
  * proxy/server access logs and browser history, a header does not.
  */
 
+import { systemTurnOf } from "../toolMessages.js";
 import { consumeLines, describeHttpError, fetchWithRetry } from "../http.js";
-import type { ChatMessage, ProviderCallConfig, RequestOptions } from "../types.js";
+import type {
+  ChatMessage,
+  ProviderCallConfig,
+  RequestOptions,
+  ToolChatMessage,
+  ToolSpec,
+  ToolTurn,
+} from "../types.js";
 
 const DEFAULT_MAX_TOKENS = 1024;
 
@@ -92,4 +100,106 @@ export async function streamGemini(
     }
   });
   return full;
+}
+
+const GEMINI_UNSUPPORTED_SCHEMA_KEYS = new Set(["additionalProperties", "$schema"]);
+
+/** Drop the JSON Schema keys Gemini's function declarations reject, at every depth. */
+export function geminiSchema(schema: unknown): unknown {
+  if (Array.isArray(schema)) return schema.map(geminiSchema);
+  if (typeof schema !== "object" || schema === null) return schema;
+  return Object.fromEntries(
+    Object.entries(schema)
+      .filter(([key]) => !GEMINI_UNSUPPORTED_SCHEMA_KEYS.has(key))
+      .map(([key, value]) => [key, geminiSchema(value)]),
+  );
+}
+
+function functionDeclaration(tool: ToolSpec) {
+  const properties = tool.parameters["properties"];
+  const hasArguments = typeof properties === "object" && properties !== null && Object.keys(properties).length > 0;
+  // Gemini rejects an object schema with no properties: a no-argument tool omits it.
+  return {
+    name: tool.name,
+    description: tool.description,
+    ...(hasArguments ? { parameters: geminiSchema(tool.parameters) } : {}),
+  };
+}
+
+type GeminiToolPart =
+  | { text: string }
+  | { functionCall: { name: string; args: Readonly<Record<string, unknown>> }; thoughtSignature?: string }
+  | { functionResponse: { name: string; response: { result: string } | { error: string } } };
+
+function toToolContents(messages: readonly ToolChatMessage[]): { role: "user" | "model"; parts: GeminiToolPart[] }[] {
+  return messages
+    .filter((m) => m.role !== "system")
+    .map((m) => {
+      if (m.role === "tool") {
+        return {
+          role: "user" as const,
+          parts: m.results.map((r) => ({
+            functionResponse: { name: r.name, response: r.isError ? { error: r.content } : { result: r.content } },
+          })),
+        };
+      }
+      if ("toolCalls" in m) {
+        return {
+          role: "model" as const,
+          parts: [
+            ...(m.content ? [{ text: m.content }] : []),
+            ...m.toolCalls.map((c) => ({
+              functionCall: { name: c.name, args: c.arguments },
+              ...(c.signature ? { thoughtSignature: c.signature } : {}),
+            })),
+          ],
+        };
+      }
+      return { role: m.role === "assistant" ? ("model" as const) : ("user" as const), parts: [{ text: m.content }] };
+    });
+}
+
+interface GeminiResponsePart {
+  text?: string;
+  functionCall?: { id?: string; name?: string; args?: Record<string, unknown> };
+  thoughtSignature?: string;
+}
+
+/** One non-streaming turn with tools available. */
+export async function completeWithToolsGemini(
+  cfg: ProviderCallConfig,
+  messages: readonly ToolChatMessage[],
+  tools: readonly ToolSpec[],
+  options: RequestOptions = {},
+): Promise<ToolTurn> {
+  const system = options.systemInstruction ?? systemTurnOf(messages);
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(cfg.model)}:generateContent`;
+  const res = await fetchWithRetry(
+    url,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": cfg.apiKey },
+      body: JSON.stringify({
+        contents: toToolContents(messages),
+        generationConfig: { maxOutputTokens: options.maxTokens ?? DEFAULT_MAX_TOKENS },
+        ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
+        ...(tools.length ? { tools: [{ functionDeclarations: tools.map(functionDeclaration) }] } : {}),
+      }),
+    },
+    options.signal,
+  );
+  if (!res.ok) throw new Error(await describeHttpError(res));
+  const data = await res.json();
+  const parts: GeminiResponsePart[] = data.candidates?.[0]?.content?.parts ?? [];
+  return {
+    text: parts.map((p) => p.text ?? "").join(""),
+    toolCalls: parts
+      .filter((p) => p.functionCall)
+      .map((p) => ({
+        id: p.functionCall?.id ?? "", // often absent; the tool loop numbers it then
+        name: p.functionCall?.name ?? "",
+        arguments: p.functionCall?.args ?? {},
+        ...(p.thoughtSignature ? { signature: p.thoughtSignature } : {}),
+      })),
+  };
 }

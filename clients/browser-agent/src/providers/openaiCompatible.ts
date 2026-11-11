@@ -6,7 +6,14 @@
  */
 
 import { consumeLines, describeHttpError, fetchWithRetry } from "../http.js";
-import type { ChatMessage, ProviderCallConfig, RequestOptions } from "../types.js";
+import type {
+  ChatMessage,
+  ProviderCallConfig,
+  RequestOptions,
+  ToolChatMessage,
+  ToolSpec,
+  ToolTurn,
+} from "../types.js";
 
 const DEFAULT_MAX_TOKENS = 1024;
 
@@ -86,4 +93,88 @@ export async function streamOpenAICompatible(
     }
   });
   return full;
+}
+
+function toToolApiMessages(messages: readonly ToolChatMessage[], systemInstruction?: string) {
+  const hasSystemTurn = messages.some((m) => m.role === "system");
+  const system = !hasSystemTurn && systemInstruction ? [{ role: "system", content: systemInstruction }] : [];
+  return [
+    ...system,
+    ...messages.flatMap((m): Record<string, unknown>[] => {
+      if (m.role === "tool") {
+        return m.results.map((r) => ({ role: "tool", tool_call_id: r.callId, content: r.content }));
+      }
+      if ("toolCalls" in m) {
+        return [
+          {
+            role: "assistant",
+            content: m.content || null,
+            tool_calls: m.toolCalls.map((c) => ({
+              id: c.id,
+              type: "function",
+              function: { name: c.name, arguments: JSON.stringify(c.arguments) },
+            })),
+          },
+        ];
+      }
+      return [{ role: m.role, content: m.content }];
+    }),
+  ];
+}
+
+interface OpenAIToolCall {
+  id?: string;
+  function?: { name?: string; arguments?: string };
+}
+
+/** Parse the model's tool-call arguments: a JSON string that may be empty. */
+export function parseArguments(raw: string | undefined, toolName: string): Record<string, unknown> {
+  if (!raw || !raw.trim()) return {};
+  const parsed: unknown = JSON.parse(raw);
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`Tool call ${toolName} sent arguments that are not a JSON object`);
+  }
+  return parsed as Record<string, unknown>;
+}
+
+/** One non-streaming turn with tools available (OpenAI or Groq). */
+export async function completeWithToolsOpenAICompatible(
+  provider: "openai" | "groq",
+  cfg: ProviderCallConfig,
+  messages: readonly ToolChatMessage[],
+  tools: readonly ToolSpec[],
+  options: RequestOptions = {},
+): Promise<ToolTurn> {
+  const res = await fetchWithRetry(
+    BASE_URLS[provider],
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}` },
+      body: JSON.stringify({
+        model: cfg.model,
+        max_tokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
+        messages: toToolApiMessages(messages, options.systemInstruction),
+        ...(tools.length
+          ? {
+              tools: tools.map((t) => ({
+                type: "function",
+                function: { name: t.name, description: t.description, parameters: t.parameters },
+              })),
+            }
+          : {}),
+      }),
+    },
+    options.signal,
+  );
+  if (!res.ok) throw new Error(await describeHttpError(res));
+  const data = await res.json();
+  const message = data.choices?.[0]?.message ?? {};
+  const calls: OpenAIToolCall[] = message.tool_calls ?? [];
+  return {
+    text: message.content ?? "",
+    toolCalls: calls.map((c) => {
+      const name = c.function?.name ?? "";
+      return { id: c.id ?? "", name, arguments: parseArguments(c.function?.arguments, name) };
+    }),
+  };
 }

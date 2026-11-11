@@ -6,8 +6,16 @@
  * it behind in the first place.
  */
 
+import { systemTurnOf } from "../toolMessages.js";
 import { consumeLines, describeHttpError, fetchWithRetry } from "../http.js";
-import type { ChatMessage, ProviderCallConfig, RequestOptions } from "../types.js";
+import type {
+  ChatMessage,
+  ProviderCallConfig,
+  RequestOptions,
+  ToolChatMessage,
+  ToolSpec,
+  ToolTurn,
+} from "../types.js";
 
 const DEFAULT_MAX_TOKENS = 1024;
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
@@ -83,4 +91,79 @@ export async function streamAnthropic(
     }
   });
   return full;
+}
+
+function toToolApiMessages(messages: readonly ToolChatMessage[]) {
+  return messages
+    .filter((m) => m.role !== "system")
+    .map((m) => {
+      if (m.role === "tool") {
+        return {
+          role: "user",
+          content: m.results.map((r) => ({
+            type: "tool_result",
+            tool_use_id: r.callId,
+            content: r.content,
+            ...(r.isError ? { is_error: true } : {}),
+          })),
+        };
+      }
+      if ("toolCalls" in m) {
+        return {
+          role: "assistant",
+          content: [
+            ...(m.content ? [{ type: "text", text: m.content }] : []),
+            ...m.toolCalls.map((c) => ({ type: "tool_use", id: c.id, name: c.name, input: c.arguments })),
+          ],
+        };
+      }
+      return { role: m.role, content: m.content };
+    });
+}
+
+interface AnthropicBlock {
+  type?: string;
+  text?: string;
+  id?: string;
+  name?: string;
+  input?: Record<string, unknown>;
+}
+
+/** One non-streaming turn with tools available. */
+export async function completeWithToolsAnthropic(
+  cfg: ProviderCallConfig,
+  messages: readonly ToolChatMessage[],
+  tools: readonly ToolSpec[],
+  options: RequestOptions = {},
+): Promise<ToolTurn> {
+  const system = options.systemInstruction ?? systemTurnOf(messages);
+  const res = await fetchWithRetry(
+    ANTHROPIC_URL,
+    {
+      method: "POST",
+      headers: headers(cfg),
+      body: JSON.stringify({
+        model: cfg.model,
+        max_tokens: options.maxTokens ?? DEFAULT_MAX_TOKENS,
+        ...(system ? { system } : {}),
+        messages: toToolApiMessages(messages),
+        ...(tools.length
+          ? { tools: tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.parameters })) }
+          : {}),
+      }),
+    },
+    options.signal,
+  );
+  if (!res.ok) throw new Error(await describeHttpError(res));
+  const data = await res.json();
+  const blocks: AnthropicBlock[] = data.content ?? [];
+  return {
+    text: blocks
+      .filter((b) => b.type === "text")
+      .map((b) => b.text ?? "")
+      .join(""),
+    toolCalls: blocks
+      .filter((b) => b.type === "tool_use")
+      .map((b) => ({ id: b.id ?? "", name: b.name ?? "", arguments: b.input ?? {} })),
+  };
 }

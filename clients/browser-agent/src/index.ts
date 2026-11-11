@@ -38,6 +38,8 @@ export type { DispatcherFeatureFlags } from "./features.js";
 export { buildMessages } from "./messages.js";
 export type { BuildMessagesOptions } from "./messages.js";
 export { isKnownProvider, modelOptionsFor, MODEL_OPTIONS, PROVIDERS } from "./registry.js";
+export { DEFAULT_MAX_STEPS, runWithTools } from "./tools.js";
+export type { RunWithToolsOptions, Tool, ToolRunResult, ToolRunStopReason } from "./tools.js";
 export type {
   AgentConfig,
   ChatMessage,
@@ -49,4 +51,9 @@ export type {
   ProviderInfo,
   RequestOptions,
   StreamOptions,
+  ToolCall,
+  ToolChatMessage,
+  ToolResult,
+  ToolSpec,
+  ToolTurn,
 } from "./types.js";

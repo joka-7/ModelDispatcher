@@ -67,6 +67,58 @@ export interface ChatMessage {
   readonly content: string;
 }
 
+/**
+ * A tool the model may call, declared by name, purpose, and a JSON Schema for
+ * its arguments — the same shape as the Python core's `ToolSpec`. Keep
+ * `parameters` to the schema subset every provider accepts (`type`,
+ * `properties`, `required`, `description`, `enum`, `items`); Gemini rejects
+ * the rest, so `additionalProperties` and `$schema` are dropped for it.
+ */
+export interface ToolSpec {
+  readonly name: string;
+  readonly description: string;
+  readonly parameters: Readonly<Record<string, unknown>>;
+}
+
+/** A model's request to run one tool, decoded from a provider response. */
+export interface ToolCall {
+  /** The provider's call id, or one generated for providers that send none
+   * (Gemini, Ollama). Pairs the call with its {@link ToolResult}. */
+  readonly id: string;
+  readonly name: string;
+  readonly arguments: Readonly<Record<string, unknown>>;
+  /** Gemini's `thoughtSignature`, echoed back on the next turn as its
+   * thinking models require. Absent for every other provider. */
+  readonly signature?: string;
+}
+
+/** What running a {@link ToolCall} produced, fed back to the model. */
+export interface ToolResult {
+  readonly callId: string;
+  readonly name: string;
+  readonly content: string;
+  /** True when the tool threw or was unknown: the model sees the error text
+   * and can recover, instead of the whole run failing. */
+  readonly isError: boolean;
+}
+
+/**
+ * One turn of a tool-using conversation: a plain {@link ChatMessage}, the
+ * assistant asking for tools, or the results of every tool it asked for in
+ * that turn (kept together because Anthropic and Gemini want them in a
+ * single turn).
+ */
+export type ToolChatMessage =
+  | ChatMessage
+  | { readonly role: "assistant"; readonly content: string; readonly toolCalls: readonly ToolCall[] }
+  | { readonly role: "tool"; readonly results: readonly ToolResult[] };
+
+/** One model turn in a tool loop: text, tool calls, or both. */
+export interface ToolTurn {
+  readonly text: string;
+  readonly toolCalls: readonly ToolCall[];
+}
+
 /** Options shared by both complete() and streamComplete()/streamChat(). */
 export interface RequestOptions {
   /** System prompt / instruction, applied via each provider's native mechanism. */

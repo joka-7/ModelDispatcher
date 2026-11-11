@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { completeOllama, streamOllama } from "../../src/providers/ollama.js";
+import { completeOllama, completeWithToolsOllama, streamOllama } from "../../src/providers/ollama.js";
+import { history, mockReply, quote, sentBody } from "./toolFixtures.js";
 import type { ProviderCallConfig } from "../../src/types.js";
 
 const cfg: ProviderCallConfig = { provider: "ollama", apiKey: "", model: "llama3.2", ollamaUrl: "http://localhost:11434" };
@@ -55,5 +56,37 @@ describe("streamOllama", () => {
 
     expect(chunks).toEqual(["Hel", "Hello"]);
     expect(full).toBe("Hello");
+  });
+});
+
+describe("completeWithToolsOllama", () => {
+  const originalFetch = globalThis.fetch;
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const cfg: ProviderCallConfig = { provider: "ollama", apiKey: "", model: "llama3.2", ollamaUrl: "http://localhost:11434" };
+
+  it("sends arguments as objects and names each tool result", async () => {
+    const fetchMock = mockReply({
+      message: { content: "", tool_calls: [{ function: { name: "get_quote", arguments: { symbol: "MSFT" } } }] },
+    });
+
+    const turn = await completeWithToolsOllama(cfg, history, [quote], {});
+
+    const body = sentBody(fetchMock);
+    expect((body["messages"] as unknown[]).slice(2)).toEqual([
+      {
+        role: "assistant",
+        content: "Checking.",
+        tool_calls: [
+          { function: { name: "get_quote", arguments: { symbol: "AAPL" } } },
+          { function: { name: "get_portfolio", arguments: {} } },
+        ],
+      },
+      { role: "tool", tool_name: "get_quote", content: "190.5" },
+      { role: "tool", tool_name: "get_portfolio", content: "tool error: locked" },
+    ]);
+    expect(turn).toEqual({ text: "", toolCalls: [{ id: "", name: "get_quote", arguments: { symbol: "MSFT" } }] });
   });
 });
