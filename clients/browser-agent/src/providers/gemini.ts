@@ -102,6 +102,11 @@ export async function streamGemini(
   return full;
 }
 
+const SKIP_SIGNATURE = "skip_thought_signature_validator";
+
+/** Finish reasons that still carry a usable turn. */
+const GEMINI_NORMAL_FINISH = new Set(["STOP", "MAX_TOKENS", undefined]);
+
 const GEMINI_UNSUPPORTED_SCHEMA_KEYS = new Set(["additionalProperties", "$schema"]);
 
 /** Drop the JSON Schema keys Gemini's function declarations reject, at every depth. */
@@ -150,7 +155,9 @@ function toToolContents(messages: readonly ToolChatMessage[]): { role: "user" | 
             ...(m.content ? [{ text: m.content }] : []),
             ...m.toolCalls.map((c) => ({
               functionCall: { name: c.name, args: c.arguments },
-              ...(c.signature ? { thoughtSignature: c.signature } : {}),
+              // Thinking models reject calls without one; calls made by another
+              // provider (after a fallback) get Google's documented placeholder.
+              thoughtSignature: c.signature ?? SKIP_SIGNATURE,
             })),
           ],
         };
@@ -190,7 +197,14 @@ export async function completeWithToolsGemini(
   );
   if (!res.ok) throw new Error(await describeHttpError(res));
   const data = await res.json();
-  const parts: GeminiResponsePart[] = data.candidates?.[0]?.content?.parts ?? [];
+  const candidate = data.candidates?.[0];
+  if (!candidate) throw new Error(`Gemini returned no answer (${data.promptFeedback?.blockReason ?? "no candidates"})`);
+  if (!GEMINI_NORMAL_FINISH.has(candidate.finishReason)) throw new Error(`Gemini stopped: ${candidate.finishReason}`);
+  const parts: GeminiResponsePart[] = candidate.content?.parts ?? [];
+  if (parts.length === 0) throw new Error(`Gemini returned an empty turn (${candidate.finishReason ?? "no reason"})`);
+  if (candidate.finishReason === "MAX_TOKENS" && parts.some((p) => p.functionCall)) {
+    throw new Error("Gemini ran out of tokens in the middle of a tool call");
+  }
   return {
     text: parts.map((p) => p.text ?? "").join(""),
     toolCalls: parts

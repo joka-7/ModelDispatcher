@@ -102,7 +102,7 @@ describe("completeWithToolsGemini", () => {
         parts: [
           { text: "Checking." },
           { functionCall: { name: "get_quote", args: { symbol: "AAPL" } }, thoughtSignature: "sig-1" },
-          { functionCall: { name: "get_portfolio", args: {} } },
+          { functionCall: { name: "get_portfolio", args: {} }, thoughtSignature: "skip_thought_signature_validator" },
         ],
       },
       {
@@ -134,5 +134,21 @@ describe("completeWithToolsGemini", () => {
     expect(
       geminiSchema({ $schema: "x", type: "object", properties: { a: { type: "object", additionalProperties: true } } }),
     ).toEqual({ type: "object", properties: { a: { type: "object" } } });
+  });
+
+  it.each([
+    ["no candidates", { promptFeedback: { blockReason: "SAFETY" } }, "SAFETY"],
+    ["a safety stop", { candidates: [{ finishReason: "SAFETY", content: { parts: [] } }] }, "SAFETY"],
+    ["a malformed call", { candidates: [{ finishReason: "MALFORMED_FUNCTION_CALL" }] }, "MALFORMED_FUNCTION_CALL"],
+    ["an empty turn", { candidates: [{ finishReason: "STOP", content: { parts: [] } }] }, "empty turn"],
+    [
+      "a call cut off by the token limit",
+      { candidates: [{ finishReason: "MAX_TOKENS", content: { parts: [{ functionCall: { name: "get_quote", args: {} } }] } }] },
+      "out of tokens",
+    ],
+  ])("throws on %s, so the loop falls back", async (_case, reply, message) => {
+    mockReply(reply);
+
+    await expect(completeWithToolsGemini(cfg, history.slice(0, 2), [quote], {})).rejects.toThrow(message);
   });
 });

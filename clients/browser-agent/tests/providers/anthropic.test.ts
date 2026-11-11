@@ -105,4 +105,18 @@ describe("completeWithToolsAnthropic", () => {
 
     expect(turn).toEqual({ text: "Let me look.", toolCalls: [{ id: "tu_1", name: "get_quote", arguments: { symbol: "MSFT" } }] });
   });
+
+  it.each([
+    ["a refusal", { stop_reason: "refusal", content: [] }, "declined"],
+    ["an empty turn", { stop_reason: "end_turn", content: [] }, "empty turn"],
+    [
+      "a call cut off by the token limit",
+      { stop_reason: "max_tokens", content: [{ type: "tool_use", id: "t", name: "get_quote", input: {} }] },
+      "out of tokens",
+    ],
+  ])("throws on %s, so the loop falls back", async (_case, reply, message) => {
+    mockReply(reply);
+
+    await expect(completeWithToolsAnthropic(cfg, history.slice(0, 2), [quote], {})).rejects.toThrow(message);
+  });
 });

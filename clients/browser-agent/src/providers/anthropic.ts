@@ -157,6 +157,12 @@ export async function completeWithToolsAnthropic(
   if (!res.ok) throw new Error(await describeHttpError(res));
   const data = await res.json();
   const blocks: AnthropicBlock[] = data.content ?? [];
+  if (data.stop_reason === "refusal") throw new Error("Anthropic declined to answer");
+  if (data.stop_reason === "max_tokens" && blocks.some((b) => b.type === "tool_use")) {
+    // The tool input may be cut off: running it would act on partial arguments.
+    throw new Error("Anthropic ran out of tokens in the middle of a tool call");
+  }
+  if (blocks.length === 0) throw new Error(`Anthropic returned an empty turn (${data.stop_reason ?? "no reason"})`);
   return {
     text: blocks
       .filter((b) => b.type === "text")

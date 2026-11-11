@@ -122,14 +122,26 @@ out.messages;   // the whole conversation, tool turns included, to continue it
   lands before a later read. Whatever a tool returns is what the model reads;
   if it throws, or the model names a tool that doesn't exist, the model gets
   the error text and can recover instead of the run failing.
-- **Bounded.** At most `maxSteps` model turns (default 6); a run that hits the
-  limit returns `stopReason: "max_steps"` with whatever text it has.
+- **Bounded.** At most `maxSteps` model turns (default 6). A run that hits the
+  limit returns `stopReason: "max_steps"`: the last turn's tools have run, but
+  the model never saw their results, and `text` is whatever it said alongside
+  asking for them (often empty).
+- **A blocked or cut-off reply counts as a failure**, not an answer: a safety
+  block, a refusal, or a tool call cut off by the token limit moves the turn to
+  the next configured provider, as an HTTP error would.
+- **One system prompt.** `systemInstruction` if given, else every system turn
+  in `messages`, joined; the same text whichever provider runs.
 - **Not streamed.** A turn can end in tool calls rather than text, so there is
   no single text stream; use `onToolResult` to show progress.
 - **Schemas.** Keep `parameters` to the JSON Schema subset every provider
   accepts (`type`, `properties`, `required`, `description`, `enum`, `items`).
   Gemini rejects the rest, so `additionalProperties` and `$schema` are dropped
-  for it, and a tool with no properties is declared without `parameters`.
+  for it, and a tool with no properties is declared without `parameters`;
+  `default`, `const`, `$ref`/`$defs` and `oneOf` are not translated, so avoid
+  them. After a fallback into Gemini, calls another provider made carry
+  Google's placeholder thought signature.
+- **Tools don't receive the abort signal**: an abort takes effect at the next
+  provider call.
 
 ## No-API-key escape hatch: `openExternalChat`
 

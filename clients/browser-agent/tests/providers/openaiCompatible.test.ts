@@ -113,8 +113,22 @@ describe("completeWithToolsOpenAICompatible", () => {
 
   it.each([
     ["[1,2]", "not a JSON object"],
-    ["{oops", "JSON"],
+    ["{oops", "not valid JSON"],
   ])("rejects arguments %s", (raw, message) => {
     expect(() => parseArguments(raw, "get_quote")).toThrow(message);
+  });
+
+  it.each([
+    ["no choices", { choices: [] }, "no answer"],
+    ["a content filter", { choices: [{ finish_reason: "content_filter", message: { content: "" } }] }, "filtered"],
+    [
+      "a call cut off by the token limit",
+      { choices: [{ finish_reason: "length", message: { content: null, tool_calls: [{ id: "x", function: { name: "get_quote", arguments: '{"sym' } }] } }] },
+      "out of tokens",
+    ],
+  ])("throws on %s, so the loop falls back", async (_case, reply, message) => {
+    mockReply(reply);
+
+    await expect(completeWithToolsOpenAICompatible("groq", cfg, history.slice(0, 2), [quote], {})).rejects.toThrow(message);
   });
 });

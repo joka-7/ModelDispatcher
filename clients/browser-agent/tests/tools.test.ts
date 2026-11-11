@@ -163,19 +163,99 @@ describe("runWithTools", () => {
     });
   });
 
-  it("gives calls without a provider id an id unique in the run", async () => {
+  it("keeps generated call ids unique when a conversation is continued", async () => {
     const gemini: AgentConfig = { providers: [{ provider: "gemini", model: "gemini-2.5-flash", apiKeys: ["k"] }], ollamaUrl: "" };
     const call = { candidates: [{ content: { parts: [{ functionCall: { name: "get_quantity", args: { symbol: "A" } } }] } }] };
+    const answer = { candidates: [{ content: { parts: [{ text: "ok" }] } }] };
     globalThis.fetch = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse(call))
       .mockResolvedValueOnce(jsonResponse(call))
-      .mockResolvedValueOnce(jsonResponse({ candidates: [{ content: { parts: [{ text: "ok" }] } }] })) as unknown as typeof fetch;
+      .mockResolvedValueOnce(jsonResponse(answer))
+      .mockResolvedValueOnce(jsonResponse(call))
+      .mockResolvedValueOnce(jsonResponse(answer)) as unknown as typeof fetch;
     const ids: string[] = [];
+    const onToolResult = (c: { id: string }) => ids.push(c.id);
 
-    await runWithTools(gemini, question, { tools: [quantityTool()], onToolResult: (c) => ids.push(c.id) });
+    const first = await runWithTools(gemini, question, { tools: [quantityTool()], onToolResult });
+    await runWithTools(gemini, [...first.messages, { role: "user", content: "And MSFT?" }], {
+      tools: [quantityTool()],
+      onToolResult,
+    });
 
-    expect(ids).toEqual(["call_0_0", "call_1_0"]);
+    expect(ids).toEqual(["call_0", "call_1", "call_2"]);
+  });
+
+  it("falls back into Gemini with a placeholder signature on calls another provider made", async () => {
+    const cfg: AgentConfig = {
+      providers: [
+        { provider: "openai", model: "gpt-4o-mini", apiKeys: ["sk-1"] },
+        { provider: "gemini", model: "gemini-2.5-flash", apiKeys: ["k"] },
+      ],
+      ollamaUrl: "",
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(openAIReply(null, [["get_quantity", { symbol: "AAPL" }]]))
+      .mockImplementation((url: string) =>
+        Promise.resolve(
+          url.includes("googleapis")
+            ? jsonResponse({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: "12." }] } }] })
+            : jsonResponse({ error: { message: "bad key" } }, 401),
+        ),
+      );
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const out = await runWithTools(cfg, question, { tools: [quantityTool()] });
+
+    const geminiBody = fetchMock.mock.calls.at(-1)?.[1] as RequestInit;
+    expect(out.provider).toBe("gemini");
+    expect(JSON.parse(geminiBody.body as string).contents[1].parts[0]).toEqual({
+      functionCall: { name: "get_quantity", args: { symbol: "AAPL" } },
+      thoughtSignature: "skip_thought_signature_validator",
+    });
+  });
+
+  it("falls back when a provider's reply is blocked", async () => {
+    const cfg: AgentConfig = {
+      providers: [
+        { provider: "gemini", model: "gemini-2.5-flash", apiKeys: ["k"] },
+        { provider: "openai", model: "gpt-4o-mini", apiKeys: ["sk-1"] },
+      ],
+      ollamaUrl: "",
+    };
+    globalThis.fetch = vi.fn((url: string) =>
+      Promise.resolve(
+        url.includes("googleapis") ? jsonResponse({ promptFeedback: { blockReason: "SAFETY" } }) : openAIReply("12 shares."),
+      ),
+    ) as unknown as typeof fetch;
+
+    const out = await runWithTools(cfg, question, { tools: [quantityTool()] });
+
+    expect(out).toMatchObject({ text: "12 shares.", provider: "openai" });
+  });
+
+  it("sends one system prompt whichever provider runs: the option, else the history's system turns", async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(openAIReply("ok")));
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+    const withSystem: ToolChatMessage[] = [{ role: "system", content: "From history." }, ...question];
+
+    await runWithTools(openai, withSystem, { tools: [], systemInstruction: "From the option." });
+    await runWithTools(openai, withSystem, { tools: [] });
+
+    const systems = sentBodies(fetchMock).map((b) => b.messages.filter((m) => m["role"] === "system"));
+    expect(systems).toEqual([
+      [{ role: "system", content: "From the option." }],
+      [{ role: "system", content: "From history." }],
+    ]);
+  });
+
+  it("leaves an empty final answer out of the history, so the conversation can continue", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(openAIReply("")) as unknown as typeof fetch;
+
+    const out = await runWithTools(openai, question, { tools: [] });
+
+    expect(out.messages).toEqual(question);
   });
 
   it.each([

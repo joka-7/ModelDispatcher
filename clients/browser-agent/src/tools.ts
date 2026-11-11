@@ -105,15 +105,40 @@ async function dispatchTurn(
       return { turn: await completeTurn(candidate, messages, tools, options), candidate };
     } catch (err) {
       if (options.signal?.aborted) throw err;
-      attempts.push({ provider: candidate.provider, error: (err as Error).message });
+      attempts.push({ provider: candidate.provider, error: messageOf(err) });
     }
   }
   throw new AllProvidersExhaustedError(attempts);
 }
 
-/** Give calls without a provider id (Gemini, Ollama) one unique in this run. */
-function numberCalls(calls: readonly ToolCall[], step: number): ToolCall[] {
-  return calls.map((call, i) => (call.id ? call : { ...call, id: `call_${step}_${i}` }));
+/**
+ * Give calls without a provider id (Gemini, Ollama) one unique in the whole
+ * conversation, counting the calls already in it: a continued conversation
+ * must not repeat an id (Anthropic rejects duplicates).
+ */
+function numberCalls(calls: readonly ToolCall[], history: readonly ToolChatMessage[]): ToolCall[] {
+  let next = history.reduce((n, m) => n + ("toolCalls" in m ? m.toolCalls.length : 0), 0);
+  return calls.map((call) => (call.id ? call : { ...call, id: `call_${next++}` }));
+}
+
+function messageOf(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * The system prompt for every turn, decided once so a fallback doesn't change
+ * it: the explicit option, else every system turn in the history, joined.
+ */
+function systemOf(messages: readonly ToolChatMessage[], explicit: string | undefined): string | undefined {
+  if (explicit !== undefined) return explicit;
+  const turns = messages.flatMap((m) => (m.role === "system" ? [m.content] : []));
+  return turns.length ? turns.join("\n\n") : undefined;
+}
+
+/** What goes to the provider: no system turns (sent as the instruction) and no
+ * empty plain turns, which Anthropic and Gemini reject. */
+function sendable(history: readonly ToolChatMessage[]): ToolChatMessage[] {
+  return history.filter((m) => m.role !== "system" && (m.role === "tool" || "toolCalls" in m || m.content !== ""));
 }
 
 async function runTool(tools: ReadonlyMap<string, Tool>, call: ToolCall): Promise<ToolResult> {
@@ -123,7 +148,7 @@ async function runTool(tools: ReadonlyMap<string, Tool>, call: ToolCall): Promis
     return { callId: call.id, name: call.name, content: await tool.run(call.arguments), isError: false };
   } catch (err) {
     // Handed back to the model, which can retry or explain, as the Python core does.
-    return { callId: call.id, name: call.name, content: `tool error: ${(err as Error).message}`, isError: true };
+    return { callId: call.id, name: call.name, content: `tool error: ${messageOf(err)}`, isError: true };
   }
 }
 
@@ -143,7 +168,9 @@ export async function runWithTools(
 ): Promise<ToolRunResult> {
   const candidates = candidatesOf(cfg);
   if (candidates.length === 0) throw new NoProviderConfiguredError();
-  const { tools, maxSteps = DEFAULT_MAX_STEPS, onToolResult, ...requestOptions } = options;
+  const { tools, maxSteps = DEFAULT_MAX_STEPS, onToolResult, systemInstruction, ...rest } = options;
+  const system = systemOf(messages, systemInstruction);
+  const requestOptions: RequestOptions = system === undefined ? rest : { ...rest, systemInstruction: system };
   const specs = tools.map((t) => t.spec);
   const byName = new Map(tools.map((t) => [t.spec.name, t]));
 
@@ -151,10 +178,10 @@ export async function runWithTools(
   const toolsUsed: string[] = [];
   let last: DispatchedTurn | undefined;
   for (let step = 0; step < maxSteps; step++) {
-    last = await dispatchTurn(candidates, history, specs, requestOptions);
-    const calls = numberCalls(last.turn.toolCalls, step);
+    last = await dispatchTurn(candidates, sendable(history), specs, requestOptions);
+    const calls = numberCalls(last.turn.toolCalls, history);
     if (calls.length === 0) {
-      history.push({ role: "assistant", content: last.turn.text });
+      if (last.turn.text) history.push({ role: "assistant", content: last.turn.text });
       return result(last, "completed", toolsUsed, history);
     }
     history.push({ role: "assistant", content: last.turn.text, toolCalls: calls });

@@ -144,7 +144,8 @@ export async function completeWithToolsOllama(
   );
   if (!res.ok) throw new Error(`Ollama error: HTTP ${res.status}. Is Ollama running?`);
   const data = await res.json();
-  const calls: OllamaToolCall[] = data.message?.tool_calls ?? [];
+  if (!data.message) throw new Error("Ollama returned no answer");
+  const calls: OllamaToolCall[] = data.message.tool_calls ?? [];
   return {
     text: data.message?.content ?? "",
     toolCalls: calls.map((c) => ({ id: "", name: c.function?.name ?? "", arguments: c.function?.arguments ?? {} })),

@@ -130,7 +130,12 @@ interface OpenAIToolCall {
 /** Parse the model's tool-call arguments: a JSON string that may be empty. */
 export function parseArguments(raw: string | undefined, toolName: string): Record<string, unknown> {
   if (!raw || !raw.trim()) return {};
-  const parsed: unknown = JSON.parse(raw);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error(`Tool call ${toolName} sent arguments that are not valid JSON`);
+  }
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     throw new Error(`Tool call ${toolName} sent arguments that are not a JSON object`);
   }
@@ -168,8 +173,14 @@ export async function completeWithToolsOpenAICompatible(
   );
   if (!res.ok) throw new Error(await describeHttpError(res));
   const data = await res.json();
-  const message = data.choices?.[0]?.message ?? {};
+  const choice = data.choices?.[0];
+  if (!choice?.message) throw new Error(`${provider} returned no answer`);
+  if (choice.finish_reason === "content_filter") throw new Error(`${provider} filtered the answer`);
+  const message = choice.message;
   const calls: OpenAIToolCall[] = message.tool_calls ?? [];
+  if (choice.finish_reason === "length" && calls.length) {
+    throw new Error(`${provider} ran out of tokens in the middle of a tool call`);
+  }
   return {
     text: message.content ?? "",
     toolCalls: calls.map((c) => {
